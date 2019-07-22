@@ -54,8 +54,10 @@ class Methods {
             ResponseDecoder<T> decoder) {
 
         return args -> {
-            RequestArgs requestArgs = encoder.encode(args);
-            return connector.executeAsync(requestArgs, promise, decoder);
+            RequestArgs requestArgs = encoder.encode(args, promise);
+            return promise.isDoneAndFailed() ?
+                    promise :
+                    connector.executeAsync(requestArgs, promise, decoder);
         };
     }
 

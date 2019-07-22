@@ -88,7 +88,8 @@ public abstract class AbstractResponsePromise<T> implements ResponsePromise<T> {
             return this.entity;
         } else {
             throw new UnexpectedException();
-        }        }
+        }
+    }
 
     @Override
     public T getEntityAndReset() {

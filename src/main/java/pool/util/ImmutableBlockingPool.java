@@ -10,8 +10,8 @@ public class ImmutableBlockingPool<T> extends ImmutablePool<T> implements Blocki
         this.blockingQueue = blockingQueue;
     }
 
-    ImmutableBlockingPool(int capacity, ElementInitializer<T> supplier, BlockingQueue<Box> blockingQueue) {
-        super(capacity, supplier);
+    ImmutableBlockingPool(int capacity, ElementInitializer<T> init, BlockingQueue<Box> blockingQueue) {
+        super(capacity, init);
         this.blockingQueue = blockingQueue;
     }
 

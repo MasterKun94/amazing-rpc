@@ -43,13 +43,15 @@ public class NettyConnector implements Connector {
         }
 
         ChannelHolder holder = ChannelManager.alloc(getAddress(requestArgs), promise);
-        if (promise.isDoneAndFailed())
+        if (promise.isDoneAndFailed()) {
             return null;//TODO
+        }
 
         assert holder != null;
         FullHttpRequest request = create(holder, requestArgs, promise);
-        if (promise.isDoneAndFailed())
+        if (promise.isDoneAndFailed()) {
             return null;
+        }
 
         return holder.executeAsync(request, promise, decoder);
 

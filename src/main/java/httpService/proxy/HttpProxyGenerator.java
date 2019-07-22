@@ -8,6 +8,7 @@ import httpService.connectors.Connector;
 import httpService.connectors.ConnectorBuilder;
 import httpService.connectors.ConnectorType;
 import httpService.connectors.netty.ResponsePromise;
+import httpService.exceptions.CauseType;
 import httpService.util.AliasUtil;
 import httpService.util.UrlParser;
 
@@ -163,6 +164,7 @@ public class HttpProxyGenerator<T> {
             Map<String, ConfigVaule> paramIndexMap = new HashMap<>();
             Map<String, ConfigVaule> headersIndexMap = new HashMap<>();
             int entityIndex = -1;
+            boolean bodyRequired = true;
             Parameter[] parameters = method.getParameters();
             for (int i = 0; i < parameters.length; i++) {
                 Parameter parameter = parameters[i];
@@ -170,6 +172,7 @@ public class HttpProxyGenerator<T> {
                     if (annotation instanceof RequestBody) {
                         if (entityIndex == -1) {
                             entityIndex = i;
+                            bodyRequired = AliasUtil.parse(annotation, "required");
                         } else {
                             throw new IllegalArgumentException("RequestBody 只能存在一个");
                         }
@@ -198,6 +201,7 @@ public class HttpProxyGenerator<T> {
                 }
             }
             int finalIndex = entityIndex;
+            boolean finalBodyRequired = bodyRequired;
 
             Function<Object[], Map<String, String>> paramsMapFunction = args ->
                     Methods.getArgsByIndex(paramIndexMap, args, RequestParam.class);
@@ -206,10 +210,16 @@ public class HttpProxyGenerator<T> {
             Function<Object[], String[]> pathFunction = args -> parser.parsePath(
                     Methods.getArgsByIndex(pathVarMap, args, PathVariable.class));
 
-            return args -> {
+            return (args, promise) -> {
                 RequestArgs requestArgs = new RequestArgs();
                 if (finalIndex != -1) {
-                    requestArgs.setEntity(JSON.toJSONString(args[finalIndex]));
+                    Object entity = args[finalIndex];
+                    if (entity != null || !finalBodyRequired) {
+                        requestArgs.setEntity(JSON.toJSONString(args[finalIndex]));
+                    } else {
+                        promise.receive(null, CauseType.INVALID_RESPONSE);//TODO
+                        throw new IllegalArgumentException("RequestBody required");
+                    }
                 }
                 requestArgs.setHost(host);
                 requestArgs.setPort(port);
