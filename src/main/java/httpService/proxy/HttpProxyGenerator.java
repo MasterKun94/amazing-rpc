@@ -4,19 +4,19 @@ import com.alibaba.fastjson.JSON;
 import httpService.HttpMethod;
 import httpService.RequestArgs;
 import httpService.annotation.*;
-import httpService.connectors.Connector;
-import httpService.connectors.ConnectorBuilder;
-import httpService.connectors.ConnectorType;
+import httpService.connectors.*;
 import httpService.connectors.netty.ResponsePromise;
 import httpService.exceptions.CauseType;
-import httpService.util.AliasUtil;
 import httpService.util.UrlParser;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.BiFunction;
 import java.util.function.Function;
+
+import static httpService.util.AliasUtil.*;
 
 /**
  * http请求代理生成器，
@@ -25,12 +25,11 @@ import java.util.function.Function;
 public class HttpProxyGenerator<T> {
     private Connector connector;
     private String contentPath;
-    private String host;
-    private int port;
     private long timeout;
     private T proxy;
     private T fallBack;
     private Map<Method, FallBackMethod> fallBackMethodMap;//TODO
+    private LoadBalancer loadBalancer;
 
     /**
      * 实例化一个代理生成器对象，如果被代理的接口有方法返回{@code Future}类型，建议使用构造函数
@@ -43,23 +42,25 @@ public class HttpProxyGenerator<T> {
         boolean showResponse;
         ConnectorType type;
         Map<String, String> defaultHeaders;
+        List<Host> hosts;
         if (clazz.isAnnotationPresent(ServiceContext.class)) {
             ServiceContext serviceContext = clazz.getAnnotation(ServiceContext.class);
-            this.contentPath = AliasUtil.parse(serviceContext, "path");
-            this.host = AliasUtil.parse(serviceContext, "host");
-            this.port = AliasUtil.parse(serviceContext, "port");
-            this.timeout = AliasUtil.parse(serviceContext, "timeout");
 
-            capacity = AliasUtil.parse(serviceContext, "poolCapacity");
-            lazy = AliasUtil.parse(serviceContext, "lazyInit");
-            showRequest = AliasUtil.parse(serviceContext, "showRequest");
-            showResponse = AliasUtil.parse(serviceContext, "showResponse");
-            type = AliasUtil.parse(serviceContext, "connector");
-            RequestHeaders[] heads = AliasUtil.parse(serviceContext, "defaultHeaders");
+            hosts = ServiceParser.parse(parse(serviceContext, "host"));
+            loadBalancer = new DefaultLoadBalancer(hosts);
+            this.contentPath = parse(serviceContext, "path");
+            this.timeout = parse(serviceContext, "timeout");
+
+            capacity = parse(serviceContext, "poolCapacity");
+            lazy = parse(serviceContext, "lazyInit");
+            showRequest = parse(serviceContext, "showRequest");
+            showResponse = parse(serviceContext, "showResponse");
+            type = parse(serviceContext, "connector");
+            RequestHeaders[] heads = parse(serviceContext, "defaultHeaders");
             defaultHeaders = new HashMap<>(heads.length);
             for (RequestHeaders head : heads) {
-                String name = AliasUtil.parse(head, "name");
-                String value = AliasUtil.parse(head, "defaultValue");
+                String name = parse(head, "name");
+                String value = parse(head, "defaultValue");
                 defaultHeaders.put(name, value);
             }
         } else {
@@ -68,7 +69,7 @@ public class HttpProxyGenerator<T> {
 
         if (type == ConnectorType.NETTY) {
             this.connector = ConnectorBuilder
-                    .createNetty(host, port)
+                    .createNetty(hosts)
                     .setPoolCapacity(capacity)
                     .setLazyInit(lazy)
                     .setShowRequest(showRequest)
@@ -134,7 +135,7 @@ public class HttpProxyGenerator<T> {
             if (method.isAnnotationPresent(RequestMapping.class)) {
                 RequestMapping requestMapping = method.getAnnotation(RequestMapping.class);
                 httpMethod = requestMapping.method();
-                tailUrl = AliasUtil.parse(requestMapping, "path");
+                tailUrl = parse(requestMapping, "path");
                 if (!tailUrl.startsWith("/")) {
                     tailUrl = "/" + tailUrl;
                 }
@@ -160,9 +161,9 @@ public class HttpProxyGenerator<T> {
             }
             UrlParser parser = UrlParser.of(contentPath + tailUrl);
 
-            Map<String, ConfigVaule> pathVarMap = new HashMap<>();
-            Map<String, ConfigVaule> paramIndexMap = new HashMap<>();
-            Map<String, ConfigVaule> headersIndexMap = new HashMap<>();
+            Map<String, ConfigValue> pathVarMap = new HashMap<>();
+            Map<String, ConfigValue> paramIndexMap = new HashMap<>();
+            Map<String, ConfigValue> headersIndexMap = new HashMap<>();
             int entityIndex = -1;
             boolean bodyRequired = true;
             Parameter[] parameters = method.getParameters();
@@ -172,29 +173,29 @@ public class HttpProxyGenerator<T> {
                     if (annotation instanceof RequestBody) {
                         if (entityIndex == -1) {
                             entityIndex = i;
-                            bodyRequired = AliasUtil.parse(annotation, "required");
+                            bodyRequired = parse(annotation, "required");
                         } else {
                             throw new IllegalArgumentException("RequestBody 只能存在一个");
                         }
                     } else {
-                        String key = AliasUtil.parse(annotation, "name");
+                        String key = parse(annotation, "name");
                         if ("".equals(key)) {
                             key = parameter.getName();
                         }
-                        ConfigVaule configVaule = new ConfigVaule();
-                        configVaule.setIndex(i);
+                        ConfigValue configValue = new ConfigValue();
+                        configValue.setIndex(i);
                         if (annotation instanceof PathVariable) {
-                            configVaule.setRequire(true);
-                            pathVarMap.put(key, configVaule);
+                            configValue.setRequire(true);
+                            pathVarMap.put(key, configValue);
                         } else {
-                            String value = AliasUtil.parse(annotation, "defaultValue");
-                            boolean require = AliasUtil.parse(annotation, "required");
-                            configVaule.setDefaultValue(value);
-                            configVaule.setRequire(require);
+                            String value = parse(annotation, "defaultValue");
+                            boolean require = parse(annotation, "required");
+                            configValue.setDefaultValue(value);
+                            configValue.setRequire(require);
                             if (annotation instanceof RequestParam) {
-                                paramIndexMap.put(key, configVaule);
+                                paramIndexMap.put(key, configValue);
                             } else if (annotation instanceof RequestHeaders) {
-                                headersIndexMap.put(key, configVaule);
+                                headersIndexMap.put(key, configValue);
                             }
                         }
                     }
@@ -203,12 +204,12 @@ public class HttpProxyGenerator<T> {
             int finalIndex = entityIndex;
             boolean finalBodyRequired = bodyRequired;
 
-            Function<Object[], Map<String, String>> paramsMapFunction = args ->
-                    Methods.getArgsByIndex(paramIndexMap, args, RequestParam.class);
-            Function<Object[], Map<String, String>> headersMapFunction = args ->
-                    Methods.getArgsByIndex(headersIndexMap, args, RequestHeaders.class);
-            Function<Object[], String[]> pathFunction = args -> parser.parsePath(
-                    Methods.getArgsByIndex(pathVarMap, args, PathVariable.class));
+            BiFunction<Object[], ResponsePromise, Map<String, String>> paramsMapFunction = (args, promise) ->
+                    Methods.getArgsByIndex(paramIndexMap, args, RequestParam.class, promise);
+            BiFunction<Object[], ResponsePromise, Map<String, String>> headersMapFunction = (args, promise) ->
+                    Methods.getArgsByIndex(headersIndexMap, args, RequestHeaders.class, promise);
+            BiFunction<Object[], ResponsePromise, String[]> pathFunction = (args, promise) -> parser.parsePath(
+                    Methods.getArgsByIndex(pathVarMap, args, PathVariable.class, promise));
 
             return (args, promise) -> {
                 RequestArgs requestArgs = new RequestArgs();
@@ -217,17 +218,22 @@ public class HttpProxyGenerator<T> {
                     if (entity != null || !finalBodyRequired) {
                         requestArgs.setEntity(JSON.toJSONString(args[finalIndex]));
                     } else {
-                        promise.receive(null, CauseType.INVALID_RESPONSE);//TODO
-                        throw new IllegalArgumentException("RequestBody required");
+                        promise.receive(
+                                new IllegalArgumentException("entity can not be null"),
+                                CauseType.REQUEST_NULL_HTTPBODY);
                     }
                 }
-                requestArgs.setHost(host);
-                requestArgs.setPort(port);
+                Host host = loadBalancer.select();
+                requestArgs.setHost(host.getIp());
+                requestArgs.setPort(host.getPort());
                 requestArgs.setMethod(httpMethod);
-                requestArgs.setPath(pathFunction.apply(args));
-                requestArgs.setParam(paramsMapFunction.apply(args));
-                requestArgs.setHeaders(headersMapFunction.apply(args));
+                requestArgs.setPath(pathFunction.apply(args, promise));
+                requestArgs.setParam(paramsMapFunction.apply(args, promise));
+                requestArgs.setHeaders(headersMapFunction.apply(args, promise));
                 requestArgs.setTimeout(timeout);
+                if (promise.isDoneAndFailed()) {
+                    return null;
+                }
                 return requestArgs;
             };
         }
@@ -296,7 +302,7 @@ public class HttpProxyGenerator<T> {
         }
     }
 
-    class ConfigVaule {
+    class ConfigValue {
         private int index;
         private boolean require;
         private String defaultValue;

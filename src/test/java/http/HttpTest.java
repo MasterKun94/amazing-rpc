@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.Future;
 
-@ServiceContext(host = "127.0.0.1", port = 8080, path = "/message", showRequest = true, showResponse = true)
+@ServiceContext(host = "127.0.0.1:8080", path = "/message", showRequest = true, showResponse = true)
 public interface HttpTest {
     Message getMessage();
 

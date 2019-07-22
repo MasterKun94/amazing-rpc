@@ -28,5 +28,5 @@ public @interface RequestMapping {
     /**
      * 请求类型，有 GET, POST, PUT, DELETE 四个可选项
      */
-    HttpMethod method();
+    HttpMethod method() default HttpMethod.GET;
 }

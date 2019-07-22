@@ -9,14 +9,12 @@ import java.lang.annotation.Target;
 
 /**
  * 用来定义识该注解的类的所有请求url的前缀部分，可以用来定义域名，ip地址和端口号等
- *
  */
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ServiceContext {
-    String host();
 
-    int port();
+    String host();
 
     String path() default "";
 

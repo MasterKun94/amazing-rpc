@@ -1,6 +1,9 @@
 package httpService.proxy;
 
 import httpService.RequestArgs;
+import httpService.annotation.PathVariable;
+import httpService.annotation.RequestHeaders;
+import httpService.annotation.RequestParam;
 import httpService.connectors.Connector;
 import httpService.connectors.netty.ResponseFuture;
 import httpService.connectors.netty.ResponsePromise;
@@ -118,24 +121,35 @@ class Methods {
     }
 
     static Map<String, String> getArgsByIndex(
-            Map<String, ? extends HttpProxyGenerator.ConfigVaule> paramIndices,
+            Map<String, ? extends HttpProxyGenerator.ConfigValue> paramIndices,
             Object[] args,
-            Class clazz) {
+            Class clazz,
+            ResponsePromise promise) {
 
         if (paramIndices.isEmpty()) {
             return null;
         } else {
             Map<String, String> paramMap = new HashMap<>(paramIndices.size());
             for (String s : paramIndices.keySet()) {
-                HttpProxyGenerator.ConfigVaule configValue = paramIndices.get(s);
+                HttpProxyGenerator.ConfigValue configValue = paramIndices.get(s);
 
                 String arg = (String) args[configValue.getIndex()];
                 if (arg == null) {
                     if (configValue.getDefaultValue() != null) {
                         arg = configValue.getDefaultValue();
                     } else if (configValue.isRequire()) {
-                        throw new IllegalArgumentException("Annotation " + clazz +
-                                " value not available");
+                        CauseType causeType;
+                        if (clazz.equals(RequestHeaders.class)) {
+                            causeType = CauseType.REQUEST_NULL_HTTPHEADERS;
+                        } else if (clazz.equals(RequestParam.class)) {
+                            causeType = CauseType.REQUEST_NULL_HTTPPARAM;
+                        } else if (clazz.equals(PathVariable.class)) {
+                            causeType = CauseType.REQUEST_NULL_PATHVARIABLE;
+                        } else {
+                            causeType = CauseType.DEFAULT;
+                        }
+                        promise.receive(new IllegalArgumentException("Annotation " +
+                                clazz + " value not available"), causeType);
                     }
                 }
                 paramMap.put(s, arg);

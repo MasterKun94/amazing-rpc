@@ -26,5 +26,5 @@ public @interface RequestHeaders {
 
     String defaultValue() default "";
 
-    boolean required = false;
+    boolean required() default true;
 }

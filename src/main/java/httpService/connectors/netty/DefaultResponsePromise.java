@@ -140,7 +140,7 @@ public class DefaultResponsePromise<T> extends AbstractResponsePromise<T> {
                 receive(t);
                 return true;
             } catch (Throwable cause) {
-                receive(cause, CauseType.DECODE_FAILED);
+                receive(cause, CauseType.RESPONSE_DECODE_FAILED);
                 return true;
             } finally {
                 channelPromise.reset();

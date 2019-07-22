@@ -1,6 +1,18 @@
 package httpService.exceptions;
 
 public enum CauseType {
+    REQUEST_NULL_HTTPPARAM(Exception.class),
+
+    REQUEST_NULL_HTTPHEADERS(Exception.class),
+
+    REQUEST_NULL_PATHVARIABLE(Exception.class),
+
+    REQUEST_NULL_HTTPBODY(Exception.class),
+
+    RESPONSE_INVALID(Exception.class),
+
+    RESPONSE_DECODE_FAILED(Exception.class),
+
     CHANNELPOOL_PULL_FAILED(ChannelPoolException.class),
 
     CHANNELPOOL_PULL_TIMEOUT(ChannelPoolException.class),
@@ -10,10 +22,6 @@ public enum CauseType {
     CONNECTION_CONNECT_TIMEOUT(ConnectionException.ConnectTimeout.class),
 
     CONNECTION_REQUEST_TIMEOUT(ConnectionException.RequestTimeout.class),
-
-    INVALID_RESPONSE(Exception.class),
-
-    DECODE_FAILED(Exception.class),
 
     SERVER_4$$(ServerException._4$$.class),
 
