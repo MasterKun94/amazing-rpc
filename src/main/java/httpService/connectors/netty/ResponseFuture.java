@@ -25,7 +25,5 @@ public interface ResponseFuture<T> extends Future<T> {
 
     ResponseFuture<T> addListener(FutureListener<T> listener);
 
-    ResponseFuture<T> setFallBack(FallBackMethod<T> fallBackMethod);
-
     boolean reset();
 }

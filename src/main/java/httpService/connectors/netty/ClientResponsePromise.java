@@ -1,23 +1,27 @@
 package httpService.connectors.netty;
 
 import httpService.exceptions.CauseType;
+import httpService.exceptions.ConnectionException;
 import httpService.exceptions.UnexpectedException;
 import httpService.proxy.FallBackMethod;
 import httpService.proxy.ResponseDecoder;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
-public abstract class AbstractResponsePromise<T> implements ResponsePromise<T> {
+public class ClientResponsePromise<T> implements ResponsePromise<T> {
 
     private volatile T entity;
     private volatile Throwable cause;
     private volatile CauseType causeType;
     private volatile boolean isSuccess;
     private volatile Thread thread;
+    private List<FutureListener<T>> listeners = new ArrayList<>();
 
     private AtomicBoolean isDone = new AtomicBoolean(false);
 
@@ -25,9 +29,7 @@ public abstract class AbstractResponsePromise<T> implements ResponsePromise<T> {
     public void receive(T entity) {
         this.entity = entity;
         this.isSuccess = true;
-        if (!this.isDone.compareAndSet(false, true))
-            throw new UnexpectedException();
-        LockSupport.unpark(thread);
+        receive();
     }
 
     @Override
@@ -35,9 +37,7 @@ public abstract class AbstractResponsePromise<T> implements ResponsePromise<T> {
         this.cause = cause;
         this.causeType = type;
         this.isSuccess = false;
-        if (!this.isDone.compareAndSet(false, true))
-            throw new UnexpectedException();
-        LockSupport.unpark(thread);
+        receive();
     }
 
     @Override
@@ -57,7 +57,18 @@ public abstract class AbstractResponsePromise<T> implements ResponsePromise<T> {
     }
 
     @Override
-    public abstract boolean whenSuccess(long timeout);
+    public boolean whenSuccess(long timeout) {
+        this.thread = Thread.currentThread();
+
+        if (!isDone()) {
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(timeout));
+        }
+        if (!isDone()) {
+            receive(new ConnectionException.RequestTimeout("Request timeout"),
+                    CauseType.CONNECTION_REQUEST_TIMEOUT);
+        }
+        return isDoneAndSuccess();
+    }
 
     @Override
     public CauseType getCauseType() {
@@ -101,10 +112,10 @@ public abstract class AbstractResponsePromise<T> implements ResponsePromise<T> {
     }
 
     @Override
-    public abstract ResponseFuture<T> addListener(FutureListener<T> listener);
-
-    @Override
-    public abstract ResponseFuture<T> setFallBack(FallBackMethod<T> fallBackMethod);
+    public ResponseFuture<T> addListener(FutureListener<T> listener) {
+        this.listeners.add(listener);
+        return this;
+    }
 
     @Override
     public boolean reset() {
@@ -113,6 +124,7 @@ public abstract class AbstractResponsePromise<T> implements ResponsePromise<T> {
         this.isSuccess = false;
         this.thread = null;
         this.entity = null;
+        this.listeners.clear();
         return this.isDone.compareAndSet(true, false);
     }
 
@@ -154,12 +166,16 @@ public abstract class AbstractResponsePromise<T> implements ResponsePromise<T> {
         }
     }
 
-    @Override
-    public abstract void setPayload(
-            ChannelResponsePromise responsePromise,
-            ResponseDecoder<T> decoder);
+    private void receive() {
+        if (!this.isDone.compareAndSet(false, true)) {
+            throw new UnexpectedException();
+        }
+        if (!listeners.isEmpty()) {
+            for (FutureListener<T> listener : listeners) {
+                listener.listen(this);
+            }
+        }
 
-    void setThread(Thread thread) {
-        this.thread = thread;
+        LockSupport.unpark(thread);
     }
 }

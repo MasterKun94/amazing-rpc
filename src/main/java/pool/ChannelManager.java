@@ -25,7 +25,7 @@ public class ChannelManager {
         try {
             int index = pool.getIndex();
             ChannelHolder holder = pool.getElement(index);
-            logger.debug("Channel holder pull success, target pool: [{}], " +
+            logger.info("Channel holder pull success, target pool: [{}], " +
                     "channel holder: [{}]", pool, holder);
             return holder;
         } catch (Exception e) {
@@ -37,12 +37,12 @@ public class ChannelManager {
     }
 
     public static void release(ChannelHolder holder) {
-        logger.debug("Channel holder releasing: [{}]", holder);
+        logger.info("Channel holder releasing: [{}]", holder);
         int i;
         do {
             i = holder == null ? -1 : holder.releaseFrom(POOL_PARTY);
         } while (i > 0);
-        logger.debug("Channel holder release success");
+        logger.info("Channel holder release success");
     }
 
     public static void close(ChannelHolder holder) {

@@ -1,19 +1,15 @@
 package httpService.connectors.netty;
 
-import httpService.exceptions.ConnectionException;
 import httpService.exceptions.CauseType;
 import httpService.exceptions.UnexpectedException;
-import httpService.proxy.FallBackMethod;
-import httpService.proxy.ResponseDecoder;
 import pool.ChannelHolder;
 import pool.ChannelManager;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.locks.LockSupport;
 
-public class ChannelResponsePromise extends AbstractResponsePromise<String> {
+public class ChannelResponsePromise extends ClientResponsePromise<String> {
 
     private final ChannelHolder holder;
 
@@ -48,16 +44,7 @@ public class ChannelResponsePromise extends AbstractResponsePromise<String> {
 
     @Override
     public boolean whenSuccess(long timeout) {
-        super.setThread(Thread.currentThread());
-
-        if (!isDone()) {
-            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(timeout));
-        }
-        if (!isDone()) {
-            receive(new ConnectionException.RequestTimeout("Request timeout"),
-                    CauseType.CONNECTION_REQUEST_TIMEOUT);
-        }
-        return isDoneAndSuccess();
+        return super.whenSuccess(timeout);
     }
 
     @Override
@@ -72,9 +59,11 @@ public class ChannelResponsePromise extends AbstractResponsePromise<String> {
 
     @Override
     public Throwable getCauseAndReset() {
-        Throwable throwable = super.getCause();
-        reset();
-        return throwable;
+        try {
+            return getCause();
+        } finally {
+            reset();
+        }
     }
 
     @Override
@@ -84,30 +73,31 @@ public class ChannelResponsePromise extends AbstractResponsePromise<String> {
 
     @Override
     public String getEntityAndReset() {
-        String entity = super.getEntity();
-        reset();
-        return entity;
+        try {
+            return getEntity();
+        } finally {
+            reset();
+        }
     }
 
     @Override
     public ResponseFuture<String> addListener(FutureListener<String> listener) {
-        return null;//TODO
-    }
-
-    @Override
-    public ResponseFuture<String> setFallBack(FallBackMethod<String> fallBackMethod) {
-        return null;//TODO
+        return super.addListener(listener);
     }
 
     @Override
     public boolean reset() {
-        if (super.reset()) {
+        try {
+            if (super.reset()) {
+                return true;
+            } else {
+                ChannelManager.close(holder);
+                throw new UnexpectedException();
+            }
+        } finally {
             ChannelManager.release(holder);
-            return true;
-        } else {
-            ChannelManager.close(holder);
-            throw new UnexpectedException();
         }
+
     }
 
     @Override
@@ -133,10 +123,5 @@ public class ChannelResponsePromise extends AbstractResponsePromise<String> {
     @Override
     public String get(long timeout, TimeUnit timeUnit) throws TimeoutException, ExecutionException {
         return super.get(timeout, timeUnit);
-    }
-
-    @Override
-    public void setPayload(ChannelResponsePromise responsePromise, ResponseDecoder<String> decoder) {
-        throw new UnsupportedOperationException();
     }
 }

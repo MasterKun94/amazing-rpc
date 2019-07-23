@@ -2,10 +2,13 @@ package pool;
 
 import httpService.DefaultArgs;
 import httpService.connectors.netty.*;
+import httpService.exceptions.CauseType;
 import httpService.proxy.ResponseDecoder;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.handler.codec.http.FullHttpRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
@@ -17,6 +20,8 @@ public class ChannelHolder {
     private HttpResponseHandler responseHandler;
     private boolean showRequest;
     private boolean showResponse;
+
+    private static final Logger logger = LoggerFactory.getLogger(ChannelHolder.class);
 
     ChannelHolder(DefaultArgs defaultArgs, boolean lazy, boolean showRequest, boolean showResponse) {
         this.showRequest = showRequest;
@@ -49,7 +54,22 @@ public class ChannelHolder {
 
         channel.writeAndFlush(request);
         ChannelResponsePromise channelPromise = responseHandler.getResponseFuture();
-        promise.setPayload(channelPromise, decoder);
+        channelPromise.addListener(future -> {
+            logger.info("listener start: " + channelPromise);
+            if (future.isDoneAndSuccess()) {
+                try {
+                    T t = decoder.decode(future.getEntity());
+                    promise.receive(t);
+                } catch (Exception e) {
+                    promise.receive(e, CauseType.RESPONSE_DECODE_FAILED);
+                }
+            } else {
+                promise.receive(future.getCause(), future.getCauseType());
+            }
+            future.reset();
+            logger.info("listener reset");
+        });
+        logger.info("add listener: " + channelPromise);
         return promise;
     }
 

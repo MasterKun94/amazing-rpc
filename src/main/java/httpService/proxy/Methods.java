@@ -102,11 +102,10 @@ class Methods {
         ProxyMethod proxyMethod = args -> {
             ResponsePromise<T> promise = arg2Prms.apply(args);
             if (promise.whenSuccess(timeout)){
-                return promise.getEntityAndReset();
+                return promise.getEntity();
             } else{
                 Throwable cause = promise.getCause();
                 CauseType type = promise.getCauseType();
-                promise.reset();
                 return fallBack.apply(args, cause, type);
             }
         };
