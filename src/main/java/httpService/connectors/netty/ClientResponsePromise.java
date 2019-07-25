@@ -3,11 +3,9 @@ package httpService.connectors.netty;
 import httpService.exceptions.CauseType;
 import httpService.exceptions.ConnectionException;
 import httpService.exceptions.UnexpectedException;
-import httpService.proxy.FallBackMethod;
-import httpService.proxy.ResponseDecoder;
+import httpService.exceptions.UnhandledException;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -15,35 +13,59 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 public class ClientResponsePromise<T> implements ResponsePromise<T> {
-
     private volatile T entity;
     private volatile Throwable cause;
     private volatile CauseType causeType;
     private volatile boolean isSuccess;
     private volatile Thread thread;
-    private List<FutureListener<T>> listeners = new ArrayList<>();
+    private final ConcurrentLinkedQueue<FutureListener<T>> listeners = new ConcurrentLinkedQueue<>();
 
     private AtomicBoolean isDone = new AtomicBoolean(false);
 
     @Override
-    public void receive(T entity) {
+    public boolean receive(T entity) {
         this.entity = entity;
         this.isSuccess = true;
-        receive();
+        return receive();
     }
 
     @Override
-    public void receive(Throwable cause, CauseType type) {
+    public boolean receive(Throwable cause, CauseType type) {
         this.cause = cause;
         this.causeType = type;
         this.isSuccess = false;
-        receive();
+        return receive();
     }
 
     @Override
-    public void receive(T entity, Throwable cause, CauseType type) {
+    public boolean receive(T entity, Throwable cause, CauseType type) {
         this.entity = entity;
-        receive(cause, type);
+        this.cause = cause;
+        this.causeType = type;
+        this.isSuccess = false;
+        return receive();
+    }
+
+    @Override
+    public void setEntity(T entity) {
+        this.entity = entity;
+    }
+
+    @Override
+    public void setCause(Throwable cause) {
+        this.cause = cause;
+    }
+
+    @Override
+    public void setCauseType(CauseType type) {
+        this.causeType = type;
+    }
+
+    @Override
+    public boolean setSuccess(boolean isSuccess) {
+        boolean before = this.isSuccess;
+        this.isSuccess = isSuccess;
+        return before;
     }
 
     @Override
@@ -118,6 +140,18 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
     }
 
     @Override
+    public ResponseFuture<T> addFallBackMethod(FallBackMethod<T> fallBackMethod) {
+        FutureListener<T> listener = promise -> {
+            if (isDoneAndFailed()) {
+                this.entity = fallBackMethod.apply(cause, causeType);
+                this.isSuccess = true;
+            }
+        };
+        addListener(listener);
+        return this;
+    }
+
+    @Override
     public boolean reset() {
         this.causeType = null;
         this.cause = null;
@@ -149,6 +183,9 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
         if (!isDone()) {
             whenSuccess(TimeUnit.SECONDS.toNanos(20));
         }
+        if (isDoneAndFailed()) {
+            throw new UnhandledException(cause, causeType);
+        }
         return entity;
     }
 
@@ -160,22 +197,20 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
         if (isDoneAndSuccess()) {
             return entity;
         } else if (isDoneAndFailed()) {
-            throw new ExecutionException(cause);
+            throw new UnhandledException(cause, causeType);
         } else {
             throw new TimeoutException();
         }
     }
 
-    private void receive() {
+    private boolean receive() {
         if (!this.isDone.compareAndSet(false, true)) {
-            throw new UnexpectedException();
+            return false;
         }
-        if (!listeners.isEmpty()) {
-            for (FutureListener<T> listener : listeners) {
-                listener.listen(this);
-            }
+        while (!listeners.isEmpty()) {
+            listeners.poll().listen(this);
         }
-
         LockSupport.unpark(thread);
+        return true;
     }
 }

@@ -10,7 +10,7 @@ import org.apache.http.util.EntityUtils;
 public class HttpClientConnector implements Connector {
 
     @Override
-    public <T> T execute(RequestArgs requestArgs, ResponsePromise<T> promise, ResponseDecoder<T> decoder) throws Exception {
+    public <T> T execute(RequestArgs requestArgs, ResponseDecoder<T> decoder, ResponsePromise<T> promise) throws Exception {
 
         StringBuilder stringBuilder = new StringBuilder()
                 .append("http://")
@@ -59,7 +59,7 @@ public class HttpClientConnector implements Connector {
     }
 
     @Override
-    public <T> ResponsePromise<T> executeAsync(RequestArgs requestArgs, ResponsePromise<T> promise, ResponseDecoder<T> decoder) {
+    public <T> ResponsePromise<T> executeAsync(RequestArgs requestArgs, ResponseDecoder<T> decoder, ResponsePromise<T> promise) {
         return null;//TODO
     }
 }

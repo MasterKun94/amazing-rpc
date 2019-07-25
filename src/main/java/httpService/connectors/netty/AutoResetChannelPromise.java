@@ -2,6 +2,8 @@ package httpService.connectors.netty;
 
 import httpService.exceptions.CauseType;
 import httpService.exceptions.UnexpectedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pool.ChannelHolder;
 import pool.ChannelManager;
 
@@ -9,27 +11,50 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class ChannelResponsePromise extends ClientResponsePromise<String> {
+public class AutoResetChannelPromise extends ClientResponsePromise<String> {
 
     private final ChannelHolder holder;
 
-    public ChannelResponsePromise(ChannelHolder holder) {
+    public AutoResetChannelPromise(ChannelHolder holder) {
         this.holder = holder;
     }
 
     @Override
-    public void receive(String entity) {
+    public boolean receive(String entity) {
         super.receive(entity);
+        return reset();
     }
 
     @Override
-    public void receive(Throwable cause, CauseType type) {
+    public boolean receive(Throwable cause, CauseType type) {
         super.receive(cause, type);
+        return reset();
     }
 
     @Override
-    public void receive(String entity, Throwable cause, CauseType type) {
+    public boolean receive(String entity, Throwable cause, CauseType type) {
         super.receive(entity, cause, type);
+        return reset();
+    }
+
+    @Override
+    public void setEntity(String entity) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setCause(Throwable cause) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setCauseType(CauseType type) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean setSuccess(boolean isSuccess) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -44,7 +69,7 @@ public class ChannelResponsePromise extends ClientResponsePromise<String> {
 
     @Override
     public boolean whenSuccess(long timeout) {
-        return super.whenSuccess(timeout);
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -102,12 +127,12 @@ public class ChannelResponsePromise extends ClientResponsePromise<String> {
 
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
-        return super.cancel(mayInterruptIfRunning);
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean isCancelled() {
-        return super.isCancelled();
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -117,11 +142,11 @@ public class ChannelResponsePromise extends ClientResponsePromise<String> {
 
     @Override
     public String get() {
-        return super.get();
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public String get(long timeout, TimeUnit timeUnit) throws TimeoutException, ExecutionException {
-        return super.get(timeout, timeUnit);
+        throw new UnsupportedOperationException();
     }
 }

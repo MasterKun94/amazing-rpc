@@ -49,13 +49,12 @@ public class ChannelHolder {
 
     public <T> ResponsePromise<T> executeAsync(FullHttpRequest request, ResponsePromise<T> promise, ResponseDecoder<T> decoder) {
         Channel channel = getChannel(promise);
-        if (promise.isDoneAndFailed())
+        if (promise.isDone())
             return null;
 
         channel.writeAndFlush(request);
-        ChannelResponsePromise channelPromise = responseHandler.getResponseFuture();
+        AutoResetChannelPromise channelPromise = responseHandler.getResponseFuture();
         channelPromise.addListener(future -> {
-            logger.info("listener start: " + channelPromise);
             if (future.isDoneAndSuccess()) {
                 try {
                     T t = decoder.decode(future.getEntity());
@@ -66,10 +65,7 @@ public class ChannelHolder {
             } else {
                 promise.receive(future.getCause(), future.getCauseType());
             }
-            future.reset();
-            logger.info("listener reset");
         });
-        logger.info("add listener: " + channelPromise);
         return promise;
     }
 

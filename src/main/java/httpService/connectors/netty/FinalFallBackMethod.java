@@ -1,12 +1,12 @@
-package httpService.proxy;
+package httpService.connectors.netty;
 
 import httpService.exceptions.CauseType;
 import httpService.exceptions.UnhandledException;
 
-public class DefaultFallBackMethod implements FallBackMethod {
+public class FinalFallBackMethod implements FallBackMethod {
 
     @Override
-    public Object apply(Object[] args, Throwable e, CauseType type) {
+    public Object apply(Throwable e, CauseType type) {
         if (
                 type == CauseType.REQUEST_NULL_HTTPBODY ||
                 type == CauseType.REQUEST_NULL_HTTPHEADERS ||
@@ -15,9 +15,9 @@ public class DefaultFallBackMethod implements FallBackMethod {
                 type == CauseType.RESPONSE_DECODE_FAILED ||
                 type == CauseType.RESPONSE_INVALID
         ) {
-            throw new IllegalArgumentException(e);
+            throw new IllegalArgumentException(type.toString(), e);
         } else {
-            throw new UnhandledException(e);//TODO
+            throw new UnhandledException(e, type);//TODO
         }
     }
 }

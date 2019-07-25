@@ -3,13 +3,21 @@ package httpService.connectors.netty;
 import httpService.exceptions.CauseType;
 
 public interface ResponsePromise<T> extends ResponseFuture<T> {
-    void receive(T entity);
+    boolean receive(T entity);
 
-    void receive(Throwable cause, CauseType type);
+    boolean receive(Throwable cause, CauseType type);
 
-    void receive(T entity, Throwable cause, CauseType type);
+    boolean receive(T entity, Throwable cause, CauseType type);
 
-    static <T> ResponsePromise<T> create(Class<T> clazz) {
+    void setEntity(T entity);
+
+    void setCause(Throwable cause);
+
+    void setCauseType(CauseType type);
+
+    boolean setSuccess(boolean isSuccess);
+
+    static <T> ResponsePromise<T> create() {
         return new ClientResponsePromise<>();
     }
 }

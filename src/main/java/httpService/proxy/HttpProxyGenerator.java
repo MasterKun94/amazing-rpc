@@ -5,9 +5,12 @@ import httpService.HttpMethod;
 import httpService.RequestArgs;
 import httpService.annotation.*;
 import httpService.connectors.*;
+import httpService.connectors.netty.FallBackMethod;
 import httpService.connectors.netty.ResponsePromise;
 import httpService.exceptions.CauseType;
 import httpService.util.UrlParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
@@ -23,6 +26,8 @@ import static httpService.util.AliasUtil.*;
  */
 @SuppressWarnings("unchecked")
 public class HttpProxyGenerator<T> {
+    private static final Logger logger = LoggerFactory.getLogger(HttpProxyGenerator.class);
+
     private Connector connector;
     private String contentPath;
     private long timeout;
@@ -121,12 +126,10 @@ public class HttpProxyGenerator<T> {
 
         //第一次调对象的某个方法时会调用该方法，并将该方法返回的函数放入{@code methodMap}中，
         private ProxyMethod init(Method method) throws ClassNotFoundException {
-            ResponsePromise promise = ResponsePromise.create(method.getReturnType());
             RequestEncoder encoder = getRequestEncoder(method);
             ResponseDecoder decoder = getResponseDecoder(method);
-            ArgsToPromise arg2Obj = Methods.argsToPromise(promise, encoder, connector, decoder); //TODO
-            FallBackMethod fallBackMethod = Methods.createFallBack(method, fallBack);
-            return Methods.asyncProxyMethod(arg2Obj, fallBackMethod, method, timeout);
+            ArgsToPromise arg2Promise = Methods.argsToPromise(encoder, connector, decoder);
+            return Methods.asyncProxyMethod(arg2Promise, timeout, method.getReturnType());
         }
 
         private RequestEncoder getRequestEncoder(Method method) {
@@ -231,9 +234,6 @@ public class HttpProxyGenerator<T> {
                 requestArgs.setParam(paramsMapFunction.apply(args, promise));
                 requestArgs.setHeaders(headersMapFunction.apply(args, promise));
                 requestArgs.setTimeout(timeout);
-                if (promise.isDoneAndFailed()) {
-                    return null;
-                }
                 return requestArgs;
             };
         }

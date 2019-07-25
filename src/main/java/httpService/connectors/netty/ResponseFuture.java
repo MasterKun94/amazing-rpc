@@ -1,7 +1,6 @@
 package httpService.connectors.netty;
 
 import httpService.exceptions.CauseType;
-import httpService.proxy.FallBackMethod;
 
 import java.util.concurrent.Future;
 
@@ -24,6 +23,8 @@ public interface ResponseFuture<T> extends Future<T> {
     T getEntityAndReset();
 
     ResponseFuture<T> addListener(FutureListener<T> listener);
+
+    ResponseFuture<T> addFallBackMethod(FallBackMethod<T> fallBackMethod);
 
     boolean reset();
 }

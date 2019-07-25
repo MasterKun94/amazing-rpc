@@ -5,12 +5,12 @@ import httpService.annotation.PathVariable;
 import httpService.annotation.RequestHeaders;
 import httpService.annotation.RequestParam;
 import httpService.connectors.Connector;
-import httpService.connectors.netty.ResponseFuture;
+import httpService.connectors.netty.FallBackMethod;
 import httpService.connectors.netty.ResponsePromise;
 import httpService.exceptions.CauseType;
-import httpService.exceptions.UnexpectedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,27 +19,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 class Methods {
-
-    static <T> FallBackMethod createFallBack(Method method, T fallBackObject) {//TODO
-        return fallBackObject == null ?
-                new DefaultFallBackMethod() :
-                (args, e, type) -> {
-                    try {
-                        return method.invoke(fallBackObject, args);
-                    } catch (IllegalAccessException | InvocationTargetException e1) {
-                        throw new UnexpectedException();
-                    }
-                };
-    }
+    private static final Logger logger = LoggerFactory.getLogger(Methods.class);
 
     @Deprecated
     static <T> ArgsToObject argsToObject(
-            ResponsePromise<T> promise,
             RequestEncoder encoder,
             Connector connector,
             ResponseDecoder<T> decoder,
             long timeout) {
-        ArgsToPromise<T> argsToPromise = argsToPromise(promise, encoder, connector, decoder);
+        ArgsToPromise<T> argsToPromise = argsToPromise(encoder, connector, decoder);
         return args -> {
             ResponsePromise<T> responsePromise = argsToPromise.apply(args);
             if (responsePromise.whenSuccess(timeout)) {
@@ -51,16 +39,16 @@ class Methods {
     }
 
     static <T> ArgsToPromise<T> argsToPromise(
-            ResponsePromise<T> promise,
             RequestEncoder encoder,
             Connector connector,
             ResponseDecoder<T> decoder) {
 
-        return args -> {
+        return (args) -> {
+            ResponsePromise<T> promise = ResponsePromise.create();
             RequestArgs requestArgs = encoder.encode(args, promise);
-            return promise.isDoneAndFailed() ?
+            return promise.isDone() ?
                     promise :
-                    connector.executeAsync(requestArgs, promise, decoder);
+                    connector.executeAsync(requestArgs, decoder, promise);
         };
     }
 
@@ -74,7 +62,7 @@ class Methods {
             try {
                 return arg2Obj.apply(args);
             } catch (Throwable e) {
-                return fallBackMethod.apply(args, e, null);
+                return fallBackMethod.apply(e, null);
             }
         };
         Class returnType = method.getReturnType();
@@ -90,28 +78,18 @@ class Methods {
 
     static <T> ProxyMethod asyncProxyMethod(
             ArgsToPromise<T> arg2Prms,
-            FallBackMethod fallBack,
-            Method method,
-            long timeout) {
-
-        Class returnType = method.getReturnType();
+            long timeout,
+            Class<T> returnType) {
         ProxyMethod finalArg2Obj;
-        if (ResponseFuture.class.isAssignableFrom(returnType)) {
+        if (Future.class.isAssignableFrom(returnType)) {
             return arg2Prms::apply;
         }
-        ProxyMethod proxyMethod = args -> {
+        ProxyMethod proxyMethod = args -> {//TODO
             ResponsePromise<T> promise = arg2Prms.apply(args);
-            if (promise.whenSuccess(timeout)){
-                return promise.getEntity();
-            } else{
-                Throwable cause = promise.getCause();
-                CauseType type = promise.getCauseType();
-                return fallBack.apply(args, cause, type);
-            }
+            promise.whenSuccess(timeout);
+            return promise.getEntity();
         };
-        if (Future.class.isAssignableFrom(returnType)) {
-            finalArg2Obj = args -> CompletableFuture.supplyAsync(() -> proxyMethod.apply(args));
-        } else if (Optional.class.isAssignableFrom(returnType)) {
+        if (Optional.class.isAssignableFrom(returnType)) {
             finalArg2Obj = args -> Optional.ofNullable(proxyMethod.apply(args));
         } else {
             finalArg2Obj = proxyMethod;

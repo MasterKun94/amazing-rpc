@@ -6,7 +6,7 @@ import httpService.proxy.ResponseDecoder;
 
 public interface Connector {
     @Deprecated
-    <T> T execute(RequestArgs requestArgs, ResponsePromise<T> promise, ResponseDecoder<T> decoder) throws Throwable;
+    <T> T execute(RequestArgs requestArgs, ResponseDecoder<T> decoder, ResponsePromise<T> promise) throws Throwable;
 
-    <T> ResponsePromise<T> executeAsync(RequestArgs requestArgs, ResponsePromise<T> promise, ResponseDecoder<T> decoder);
+    <T> ResponsePromise<T> executeAsync(RequestArgs requestArgs, ResponseDecoder<T> decoder, ResponsePromise<T> promise);
 }

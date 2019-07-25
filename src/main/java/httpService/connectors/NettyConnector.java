@@ -13,6 +13,8 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.CharsetUtil;
 import io.netty.util.internal.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pool.ChannelHolder;
 import pool.ChannelManager;
 
@@ -21,14 +23,15 @@ import java.util.Map;
 
 public class NettyConnector implements Connector {
     private Charset charset = CharsetUtil.UTF_8;
+    private static final Logger logger = LoggerFactory.getLogger(NettyConnector.class);
 
     public void setCharset(Charset charset) {
         this.charset = charset;
     }
 
     @Override
-    public <T> T execute(RequestArgs requestArgs, ResponsePromise<T> promise, ResponseDecoder<T> decoder) throws Throwable {
-        ResponsePromise<T> future = executeAsync(requestArgs, promise, decoder);
+    public <T> T execute(RequestArgs requestArgs, ResponseDecoder<T> decoder, ResponsePromise<T> promise) throws Throwable {
+        ResponsePromise<T> future = executeAsync(requestArgs, decoder, promise);
         if (future.whenSuccess(requestArgs.getTimeout())) {
             return future.getEntityAndReset();
         } else {
@@ -37,29 +40,20 @@ public class NettyConnector implements Connector {
     }
 
     @Override
-    public <T> ResponsePromise<T> executeAsync(RequestArgs requestArgs, ResponsePromise<T> promise, ResponseDecoder<T> decoder) {
-        if (promise.isDoneAndFailed()) {
-            return null;
-        }
-
+    public <T> ResponsePromise<T> executeAsync(RequestArgs requestArgs, ResponseDecoder<T> decoder, ResponsePromise<T> promise) {
         ChannelHolder holder = ChannelManager.alloc(getAddress(requestArgs), promise);
-        if (promise.isDoneAndFailed()) {
-            return null;//TODO
-        }
-
         assert holder != null;
         FullHttpRequest request = create(holder, requestArgs, promise);
-        if (promise.isDoneAndFailed()) {
-            return null;
-        }
-
         return holder.executeAsync(request, promise, decoder);
-
     }
 
     private FullHttpRequest create(ChannelHolder holder, RequestArgs requestArgs, ResponsePromise promise) {
+        Channel channel = holder.getChannel(promise);
+        if (promise.isDone()) {
+            return null;
+        }
+        ByteBuf body = getRequestBody(requestArgs.getEntity(), channel);
         DefaultArgs defaultArgs = holder.getDefaultArgs();
-        ByteBuf body = getRequestBody(requestArgs.getEntity(), holder.getChannel(promise));
         String url = getUrl(requestArgs.getPath(), requestArgs.getParam());
 
         FullHttpRequest request = new DefaultFullHttpRequest(

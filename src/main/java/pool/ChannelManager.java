@@ -17,15 +17,14 @@ public class ChannelManager {
     private static final Map<String, ChannelPool> POOL_PARTY = new HashMap<>();
 
     public static ChannelHolder alloc(String host, ResponsePromise promise) {
-        if (promise.isDoneAndFailed()) {
+        if (promise.isDone()) {
             return null;
         }
-
         ChannelPool pool = POOL_PARTY.get(host);
         try {
             int index = pool.getIndex();
             ChannelHolder holder = pool.getElement(index);
-            logger.info("Channel holder pull success, target pool: [{}], " +
+            logger.debug("Channel holder pull success, target pool: [{}], " +
                     "channel holder: [{}]", pool, holder);
             return holder;
         } catch (Exception e) {
@@ -37,12 +36,12 @@ public class ChannelManager {
     }
 
     public static void release(ChannelHolder holder) {
-        logger.info("Channel holder releasing: [{}]", holder);
+        logger.debug("Channel holder releasing: [{}]", holder);
         int i;
         do {
             i = holder == null ? -1 : holder.releaseFrom(POOL_PARTY);
         } while (i > 0);
-        logger.info("Channel holder release success");
+        logger.debug("Channel holder release success");
     }
 
     public static void close(ChannelHolder holder) {
