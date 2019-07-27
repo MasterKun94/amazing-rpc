@@ -4,6 +4,7 @@ import httpService.connectors.httpClient.HttpBuilder;
 import httpService.connectors.httpClient.HttpConnector;
 import httpService.RequestArgs;
 import httpService.connectors.netty.ResponsePromise;
+import httpService.proxy.SocketAddress;
 import httpService.proxy.ResponseDecoder;
 import org.apache.http.util.EntityUtils;
 
@@ -11,12 +12,12 @@ public class HttpClientConnector implements Connector {
 
     @Override
     public <T> T execute(RequestArgs requestArgs, ResponseDecoder<T> decoder, ResponsePromise<T> promise) throws Exception {
-
+        SocketAddress socketAddress = requestArgs.getLoadBalancer().select();
         StringBuilder stringBuilder = new StringBuilder()
                 .append("http://")
-                .append(requestArgs.getHost())
+                .append(socketAddress.get())
                 .append(":")
-                .append(requestArgs.getPort());
+                .append(socketAddress.getPort());
         for (String s : requestArgs.getPath()) {
             if (s != null && !s.equals(""))
                 stringBuilder.append("/").append(s);

@@ -1,30 +1,28 @@
 package httpService;
 
+import httpService.proxy.SocketAddress;
+
 import java.util.Map;
 
 public class DefaultArgs {
-    private final String ip;
-    private final int port;
-    private final String address;
+    private SocketAddress address;
     private final Map<String, String> defaultHeaders;
 
-    public DefaultArgs(String ip, int port, Map<String, String> defaultHeaders) {
-        this.ip = ip;
-        this.port = port;
-        this.address = ip + ":" + port;
+    public DefaultArgs(SocketAddress address, Map<String, String> defaultHeaders) {
+        this.address = address;
         this.defaultHeaders = defaultHeaders;
     }
 
     public String getIp() {
-        return ip;
+        return address.getHost();
     }
 
     public int getPort() {
-        return port;
+        return address.getPort();
     }
 
     public String getAddress() {
-        return address;
+        return address.get();
     }
 
     public Map<String, String> getHeaders() {

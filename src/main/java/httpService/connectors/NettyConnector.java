@@ -42,16 +42,15 @@ public class NettyConnector implements Connector {
     @Override
     public <T> ResponsePromise<T> executeAsync(RequestArgs requestArgs, ResponseDecoder<T> decoder, ResponsePromise<T> promise) {
         ChannelHolder holder = ChannelManager.alloc(getAddress(requestArgs), promise);
-        assert holder != null;
         FullHttpRequest request = create(holder, requestArgs, promise);
         return holder.executeAsync(request, promise, decoder);
     }
 
     private FullHttpRequest create(ChannelHolder holder, RequestArgs requestArgs, ResponsePromise promise) {
-        Channel channel = holder.getChannel(promise);
         if (promise.isDone()) {
             return null;
         }
+        Channel channel = holder.getChannel(promise);
         ByteBuf body = getRequestBody(requestArgs.getEntity(), channel);
         DefaultArgs defaultArgs = holder.getDefaultArgs();
         String url = getUrl(requestArgs.getPath(), requestArgs.getParam());
@@ -73,7 +72,7 @@ public class NettyConnector implements Connector {
     }
 
     private String getAddress(RequestArgs requestArgs) {
-        return requestArgs.getHost() + ":" + requestArgs.getPort();
+        return requestArgs.getLoadBalancer().select().get();
     }
 
     private String getUrl(String[] path, Map<String, String> param) {

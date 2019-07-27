@@ -1,24 +1,24 @@
 package httpService.connectors;
 
-import httpService.proxy.Host;
+import httpService.proxy.SocketAddress;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DefaultLoadBalancer implements LoadBalancer {
-    private List<Host> hosts;
+    private List<SocketAddress> socketAddresses;
     private AtomicInteger index;
     private final int size;
 
-    public DefaultLoadBalancer(List<Host> hosts) {
-        this.hosts = hosts;
+    public DefaultLoadBalancer(List<SocketAddress> socketAddresses) {
+        this.socketAddresses = socketAddresses;
         this.index = new AtomicInteger();
-        this.size = hosts.size();
+        this.size = socketAddresses.size();
     }
 
     @Override
-    public Host select() {
+    public SocketAddress select() {
         int i = index.getAndIncrement();
-        return hosts.get(i % size);
+        return socketAddresses.get(i % size);
     }
 }

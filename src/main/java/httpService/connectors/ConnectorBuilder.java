@@ -1,6 +1,6 @@
 package httpService.connectors;
 
-import httpService.proxy.Host;
+import httpService.proxy.SocketAddress;
 import pool.ChannelManager;
 import pool.ChannelPool;
 import pool.util.Box;
@@ -14,8 +14,8 @@ import java.util.function.Supplier;
 public class ConnectorBuilder {
     private Supplier<Connector> supplier;
 
-    public static NettyConnectorBuilder createNetty(List<Host> hosts) {
-        return new NettyConnectorBuilder(hosts);
+    public static NettyConnectorBuilder createNetty(List<SocketAddress> socketAddresses) {
+        return new NettyConnectorBuilder(socketAddresses);
     }
 
     public static ConnectorBuilder createHttpClient() {
@@ -29,16 +29,16 @@ public class ConnectorBuilder {
     }
 
     public static class NettyConnectorBuilder extends ConnectorBuilder {
-        private List<Host> hosts;
+        private List<SocketAddress> socketAddresses;
         private int capacity = 32;
         private boolean lazy = false;
-        private boolean showReqeust = false;
+        private boolean showRequest = false;
         private boolean showResponse = false;
         private Map<String, String> headers = new HashMap<>();
         private BlockingQueue<Box> queue;
 
-        private NettyConnectorBuilder(List<Host> hosts) {
-            this.hosts = hosts;
+        private NettyConnectorBuilder(List<SocketAddress> socketAddresses) {
+            this.socketAddresses = socketAddresses;
         }
 
         public NettyConnectorBuilder setPoolCapacity(int capacity) {
@@ -52,7 +52,7 @@ public class ConnectorBuilder {
         }
 
         public NettyConnectorBuilder setShowRequest(boolean showRequest) {
-            this.showReqeust = showRequest;
+            this.showRequest = showRequest;
             return this;
         }
 
@@ -78,19 +78,18 @@ public class ConnectorBuilder {
 
         @Override
         public Connector build() {
-            for (Host host : hosts) {
-                if (!ChannelManager.exist(host.getHost())) {
+            for (SocketAddress socketAddress : this.socketAddresses) {
+                if (!ChannelManager.exist(socketAddress.get())) {
                     Supplier<ChannelPool> pool = () -> new ChannelPool(
-                            host.getIp(),
-                            host.getPort(),
+                            socketAddress,
                             capacity,
                             lazy,
                             headers,
                             queue,
-                            showReqeust,
+                            showRequest,
                             showResponse
                     );
-                    ChannelManager.register(host.getHost(), pool);
+                    ChannelManager.register(socketAddress.get(), pool);
                 }
             }
             return new NettyConnector();

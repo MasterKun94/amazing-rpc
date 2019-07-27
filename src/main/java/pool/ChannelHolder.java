@@ -15,11 +15,12 @@ import java.util.Map;
 
 public class ChannelHolder {
     private Channel channel;
-    private final DefaultArgs defaultArgs;
-    private int poolIndex = -1;
     private HttpResponseHandler responseHandler;
-    private boolean showRequest;
-    private boolean showResponse;
+    private int poolIndex = -1;
+
+    private final boolean showRequest;
+    private final boolean showResponse;
+    private final DefaultArgs defaultArgs;
 
     private static final Logger logger = LoggerFactory.getLogger(ChannelHolder.class);
 

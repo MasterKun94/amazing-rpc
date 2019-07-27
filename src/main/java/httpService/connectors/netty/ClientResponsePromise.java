@@ -6,7 +6,6 @@ import httpService.exceptions.UnexpectedException;
 import httpService.exceptions.UnhandledException;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -44,28 +43,6 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
         this.causeType = type;
         this.isSuccess = false;
         return receive();
-    }
-
-    @Override
-    public void setEntity(T entity) {
-        this.entity = entity;
-    }
-
-    @Override
-    public void setCause(Throwable cause) {
-        this.cause = cause;
-    }
-
-    @Override
-    public void setCauseType(CauseType type) {
-        this.causeType = type;
-    }
-
-    @Override
-    public boolean setSuccess(boolean isSuccess) {
-        boolean before = this.isSuccess;
-        this.isSuccess = isSuccess;
-        return before;
     }
 
     @Override
@@ -190,7 +167,7 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
     }
 
     @Override
-    public T get(long timeout, TimeUnit unit) throws TimeoutException, ExecutionException {
+    public T get(long timeout, TimeUnit unit) throws TimeoutException {
         if (!isDone()) {
             whenSuccess(unit.toMillis(timeout));
         }

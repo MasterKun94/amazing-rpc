@@ -7,7 +7,7 @@ import java.util.Collections;
 public class Test {
 
     public static void main(String[] args) throws Exception {
-        HttpTest httpTest = HttpProxyGenerator.getProxy(HttpTest.class);
+        HttpTest httpTest = HttpProxyGenerator.start(HttpTest.class).getProxy();
 //        httpTest.get();
         for (int i = 0; i < 5; i++) {
             System.out.println(i + ", " + System.currentTimeMillis());

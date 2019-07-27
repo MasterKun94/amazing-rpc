@@ -1,10 +1,11 @@
 package httpService;
 
+import httpService.connectors.LoadBalancer;
+
 import java.util.Map;
 
 public class RequestArgs {
-    private String host;
-    private int port;
+    private LoadBalancer loadBalancer;
     private String[] path;
     private HttpMethod method;
     private Map<String, String> param;
@@ -14,12 +15,8 @@ public class RequestArgs {
 
     public RequestArgs() {}
 
-    public String getHost() {
-        return this.host;
-    }
-
-    public int getPort() {
-        return this.port;
+    public LoadBalancer getLoadBalancer() {
+        return loadBalancer;
     }
 
     public String[] getPath() {
@@ -46,12 +43,8 @@ public class RequestArgs {
         return this.timeout;
     }
 
-    public void setHost(String host) {
-        this.host = host;
-    }
-
-    public void setPort(int port) {
-        this.port = port;
+    public void setLoadBalancer(LoadBalancer loadBalancer) {
+        this.loadBalancer = loadBalancer;
     }
 
     public void setPath(String[] path) {

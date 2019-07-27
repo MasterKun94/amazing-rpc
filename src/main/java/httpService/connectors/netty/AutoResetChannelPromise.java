@@ -2,14 +2,10 @@ package httpService.connectors.netty;
 
 import httpService.exceptions.CauseType;
 import httpService.exceptions.UnexpectedException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import pool.ChannelHolder;
 import pool.ChannelManager;
 
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class AutoResetChannelPromise extends ClientResponsePromise<String> {
 
@@ -35,26 +31,6 @@ public class AutoResetChannelPromise extends ClientResponsePromise<String> {
     public boolean receive(String entity, Throwable cause, CauseType type) {
         super.receive(entity, cause, type);
         return reset();
-    }
-
-    @Override
-    public void setEntity(String entity) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setCause(Throwable cause) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setCauseType(CauseType type) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean setSuccess(boolean isSuccess) {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -146,7 +122,7 @@ public class AutoResetChannelPromise extends ClientResponsePromise<String> {
     }
 
     @Override
-    public String get(long timeout, TimeUnit timeUnit) throws TimeoutException, ExecutionException {
+    public String get(long timeout, TimeUnit timeUnit) {
         throw new UnsupportedOperationException();
     }
 }

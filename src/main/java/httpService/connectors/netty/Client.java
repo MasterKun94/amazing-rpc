@@ -22,7 +22,13 @@ public class Client {
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
     private static final EventLoopGroup group = new NioEventLoopGroup();
 
-    public static Channel start(String host, int port, ResponsePromise promise, ChannelHolder holder, boolean showRequest, boolean showResponse) {
+    public static Channel start(
+            String host,
+            int port,
+            ResponsePromise promise,
+            ChannelHolder holder,
+            boolean showRequest,
+            boolean showResponse) {
         Bootstrap bootstrap = new Bootstrap();
         ChannelFuture channelFuture = bootstrap
                 .group(group)
@@ -42,18 +48,5 @@ public class Client {
         }
 
         return channelFuture.channel();
-    }
-
-    public static void main(String[] args) throws Exception {
-        Channel channel = Client.start("localhost", 8080, null, null, true, true);
-        FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_0, HttpMethod.GET, "http://localhost:8080/message/message");
-
-        request.headers()
-                .set("Accept", "application/json")
-                .set("Content-Type", "application/json")
-                .set("Cache-Control", "no-cache");
-        channel.pipeline().writeAndFlush(request);
-        System.out.println(channel.pipeline().get(HttpResponseHandler.class).getResponseFuture().get(10000, TimeUnit.MILLISECONDS));
-
     }
 }

@@ -1,17 +1,15 @@
 package httpService.exceptions;
 
 public enum CauseType {
-    REQUEST_NULL_HTTPPARAM(Exception.class),
+    REQUEST_NULL_PARAM(BadRequestException.class),
 
-    REQUEST_NULL_HTTPHEADERS(Exception.class),
+    REQUEST_NULL_HEADERS(BadRequestException.class),
 
-    REQUEST_NULL_PATHVARIABLE(Exception.class),
+    REQUEST_NULL_PATHVAR(BadRequestException.class),
 
-    REQUEST_NULL_HTTPBODY(Exception.class),
+    REQUEST_NULL_BODY(BadRequestException.class),
 
-    RESPONSE_INVALID(Exception.class),
-
-    RESPONSE_DECODE_FAILED(Exception.class),
+    RESPONSE_DECODE_FAILED(BadResponseException.class),
 
     CHANNELPOOL_PULL_FAILED(ChannelPoolException.class),
 

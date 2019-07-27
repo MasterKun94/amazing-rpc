@@ -1,7 +1,7 @@
 package httpService.connectors;
 
-import httpService.proxy.Host;
+import httpService.proxy.SocketAddress;
 
 public interface LoadBalancer {
-    Host select();
+    SocketAddress select();
 }

@@ -1,6 +1,7 @@
 package pool;
 
 import httpService.DefaultArgs;
+import httpService.proxy.SocketAddress;
 import pool.util.BlockingPool;
 import pool.util.Box;
 import pool.util.ElementInitializer;
@@ -13,16 +14,14 @@ public class ChannelPool implements BlockingPool<ChannelHolder> {
     private final BlockingPool<ChannelHolder> pool;
 
     public ChannelPool(
-            String host,
-            int port,
+            SocketAddress address,
             int capacity,
             boolean lazy,
             Map<String, String> defaultHeaders,
             BlockingQueue<Box> queue,
             boolean showRequest,
-            boolean showResponse
-    ) {
-        DefaultArgs args = new DefaultArgs(host, port, defaultHeaders);
+            boolean showResponse) {
+        DefaultArgs args = new DefaultArgs(address, defaultHeaders);
         ElementInitializer<ChannelHolder> init = () -> new ChannelHolder(args, lazy, showRequest, showResponse);
         pool = Pools.immutableBlockingPool(capacity, init, queue);
     }
