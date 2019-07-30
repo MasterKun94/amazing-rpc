@@ -11,7 +11,7 @@ public class Pools {
         return new ImmutableBlockingPool<>(capacity, clazz, blockingQueue);
     }
 
-    public static <T> BlockingPool<T> immutableBlockingPool(int capacity, ElementInitializer<T> getter, BlockingQueue<Box> blockingQueue) {
+    public static <T> BlockingPool<T> immutableBlockingPool(int capacity, IndexElementInitializer<T> getter, BlockingQueue<Box> blockingQueue) {
         return new ImmutableBlockingPool<>(capacity, getter, blockingQueue);
     }
 }

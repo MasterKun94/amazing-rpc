@@ -1,4 +1,4 @@
-package httpService.connectors.netty;
+package httpService.proxy;
 
 import httpService.exceptions.CauseType;
 
@@ -23,8 +23,6 @@ public interface ResponseFuture<T> extends Future<T> {
     T getEntityAndReset();
 
     ResponseFuture<T> addListener(FutureListener<T> listener);
-
-    ResponseFuture<T> addFallBackMethod(FallBackMethod<T> fallBackMethod);
 
     boolean reset();
 }

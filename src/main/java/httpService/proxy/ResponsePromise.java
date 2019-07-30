@@ -1,4 +1,4 @@
-package httpService.connectors.netty;
+package httpService.proxy;
 
 import httpService.exceptions.CauseType;
 
@@ -12,4 +12,12 @@ public interface ResponsePromise<T> extends ResponseFuture<T> {
     static <T> ResponsePromise<T> create() {
         return new ClientResponsePromise<>();
     }
+
+    void setSuccess(boolean isSuccess);
+
+    void setEntity(T entity);
+
+    void setCause(Throwable cause);
+
+    void setCauseType(CauseType causeType);
 }

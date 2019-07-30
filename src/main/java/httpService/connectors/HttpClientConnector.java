@@ -3,25 +3,24 @@ package httpService.connectors;
 import httpService.connectors.httpClient.HttpBuilder;
 import httpService.connectors.httpClient.HttpConnector;
 import httpService.RequestArgs;
-import httpService.connectors.netty.ResponsePromise;
-import httpService.proxy.SocketAddress;
-import httpService.proxy.ResponseDecoder;
+import httpService.proxy.Decoder;
+import httpService.proxy.ResponseFuture;
+import httpService.proxy.ResponsePromise;
 import org.apache.http.util.EntityUtils;
+
+import java.net.InetSocketAddress;
 
 public class HttpClientConnector implements Connector {
 
-    @Override
-    public <T> T execute(RequestArgs requestArgs, ResponseDecoder<T> decoder, ResponsePromise<T> promise) throws Exception {
-        SocketAddress socketAddress = requestArgs.getLoadBalancer().select();
+    public <T> T execute(RequestArgs requestArgs, Decoder<T> decoder, ResponsePromise<T> promise) throws Exception {
+        InetSocketAddress socketAddress = requestArgs.getAddress();
         StringBuilder stringBuilder = new StringBuilder()
                 .append("http://")
-                .append(socketAddress.get())
+                .append(socketAddress.toString())
                 .append(":")
-                .append(socketAddress.getPort());
-        for (String s : requestArgs.getPath()) {
-            if (s != null && !s.equals(""))
-                stringBuilder.append("/").append(s);
-        }
+                .append(socketAddress.getPort())
+                .append(requestArgs.getPath());
+
         String url = stringBuilder.toString();
 //        System.out.println(url);
         HttpBuilder builder;
@@ -60,7 +59,7 @@ public class HttpClientConnector implements Connector {
     }
 
     @Override
-    public <T> ResponsePromise<T> executeAsync(RequestArgs requestArgs, ResponseDecoder<T> decoder, ResponsePromise<T> promise) {
+    public <T> ResponseFuture<T> executeAsync(RequestArgs requestArgs, Decoder<T> decoder, ResponsePromise<T> promise) {
         return null;//TODO
     }
 }

@@ -7,7 +7,6 @@ import org.apache.http.util.EntityUtils;
 
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -50,11 +49,10 @@ public class HttpBuilder {
         return start(new HttpDelete(), url);
     }
 
-    public HttpBuilder params(Map<String, String> params) {
-        if (params != null && !params.isEmpty()) {
-            Set<String> keys = params.keySet();
-            for (String key : keys) {
-                param(key, params.get(key));
+    public HttpBuilder params(String[][] params) {
+        if (params != null && params.length > 0) {
+            for (String[] param : params) {
+                param(param[0], param[1]);
             }
         }
         return this;
@@ -69,10 +67,11 @@ public class HttpBuilder {
         return this;
     }
 
-    public HttpBuilder headers(Map<String, String> headers) {
-        if (headers != null && !headers.isEmpty()) {
-            Set<String> keys = headers.keySet();
-            keys.forEach(key -> request.setHeader(key, headers.get(key)));
+    public HttpBuilder headers(String[][] headers) {
+        if (headers != null && headers.length > 0) {
+            for (String[] header : headers) {
+                request.setHeader(header[0], header[1]);
+            }
         }
         return this;
     }

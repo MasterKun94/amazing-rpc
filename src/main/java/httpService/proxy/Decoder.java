@@ -1,5 +1,5 @@
 package httpService.proxy;
 
-public interface ResponseDecoder<T> {
+public interface Decoder<T> {
     T decode(String entity) throws Exception;
 }

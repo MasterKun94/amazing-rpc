@@ -1,6 +1,7 @@
 package httpService.annotation;
 
 import httpService.connectors.ConnectorType;
+import httpService.ssl.SslConfig;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -36,4 +37,6 @@ public @interface ServiceContext {
             @RequestHeaders(name = "Connection", defaultValue = "keep-alive"),
             @RequestHeaders(name = "Cache-Control", defaultValue = "no-cache")
     };
+
+    SslConfig sslConfig() default @SslConfig(enabled = false);
 }

@@ -17,14 +17,14 @@ public  class ImmutablePool<T> implements Pool<T> {
     private final Node root;
 
     @SuppressWarnings("unchecked")
-    ImmutablePool(int capacity, ElementInitializer<T> supplier) {
+    ImmutablePool(int capacity, IndexElementInitializer<T> supplier) {
         elements = (T[]) new Object[capacity];
         referenceCounter = new AtomicIntegerArray(capacity);
         Map<T, Integer> map = new TreeMap<>(Comparator.comparingInt(Object::hashCode));
         try {
             T t;
             for (int i = 0; i < capacity; i++) {
-                t = supplier.get();
+                t = supplier.init(i);
                 elements[i] = t;
                 map.put(t, i);
             }
@@ -52,7 +52,7 @@ public  class ImmutablePool<T> implements Pool<T> {
     }
 
     ImmutablePool(int capacity, Class<T> clazz) {
-        this(capacity, () -> clazz.getConstructor().newInstance());
+        this(capacity, (i) -> clazz.getConstructor().newInstance());
     }
 
     @Override

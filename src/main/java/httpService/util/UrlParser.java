@@ -24,11 +24,27 @@ public class UrlParser {
         return new UrlParser(url);
     }
 
-    public String[] parsePath(Map<String, String> pathVarMap) {
+    public StringBuilder parsePath(String[][] pathVarMap) {
         String[] parseUrl = url.clone();
-        for (int idx : index) {
-            parseUrl[idx] = pathVarMap.get(parseUrl[idx].trim());
+        if (index.size() > 0) {
+            for (String[] pathVar : pathVarMap) {
+                parseUrl[Integer.valueOf(pathVar[0])] = pathVar[1];
+            }
         }
-        return parseUrl;
+        StringBuilder urlBuilder = new StringBuilder();
+        for (String s : parseUrl) {
+            if (s != null && !s.equals(""))
+                urlBuilder.append("/").append(s);
+        }
+        return urlBuilder;
+    }
+
+    public String getIndex(String name) {
+        for (int index : index) {
+            if (url[index].trim().equals(name.trim())) {
+                return String.valueOf(index);
+            }
+        }
+        throw new IllegalArgumentException(this.toString());
     }
 }

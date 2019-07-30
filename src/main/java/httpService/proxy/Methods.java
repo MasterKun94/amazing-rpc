@@ -4,28 +4,58 @@ import com.alibaba.fastjson.JSON;
 import httpService.HttpMethod;
 import httpService.RequestArgs;
 import httpService.annotation.*;
-import httpService.connectors.Connector;
-import httpService.connectors.LoadBalancer;
-import httpService.connectors.netty.ResponsePromise;
+import httpService.connectors.*;
 import httpService.exceptions.BadRequestException;
 import httpService.exceptions.CauseType;
+import httpService.ssl.SslContextFactory;
 import httpService.util.UrlParser;
+import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
+import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static httpService.util.AliasUtil.parse;
 
-class Methods {
+class Methods<T> {
+    private Method method;
+    private Encoder encoder;
+    private Decoder<T> decoder;
+    private Connector connector;
+
+    static Methods of(Method method) throws ClassNotFoundException {
+        Methods methods = new Methods();
+        methods.method = method;
+        methods.decoder = decode(method);
+
+        return methods;
+    }
+
+    Methods setEncodeArgs(String contentPath, LoadBalancer balancer) {
+        encoder = encode(method, contentPath, balancer);
+        return this;
+    }
+
+    Methods setConnector(Connector connector) {
+        this.connector = connector;
+        return this;
+    }
+
+    ProxyMethod build(long timeout) {
+        ArgsToPromise<T> argsToPromise = argsToPromise(encoder, connector, decoder);
+        return asyncProxyMethod(argsToPromise, timeout, method);
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(Methods.class);
 
-    private static Map<String, String> getArgsByIndex(
+    private static String[][] getArgsByIndex(
             Map<String, ? extends ConfigValue> paramIndices,
             Object[] args,
             Class clazz,
@@ -34,8 +64,10 @@ class Methods {
         if (paramIndices.isEmpty() || promise.isDone()) {
             return null;
         } else {
-            Map<String, String> paramMap = new HashMap<>(paramIndices.size());
-            for (String s : paramIndices.keySet()) {
+            String[][] params = new String[paramIndices.size()][2];
+            Set<String> keySet = paramIndices.keySet();
+            int i = 0;
+            for (String s : keySet) {
                 ConfigValue configValue = paramIndices.get(s);
 
                 String arg = (String) args[configValue.getIndex()];
@@ -57,13 +89,16 @@ class Methods {
                                 clazz + " value not available"), causeType);
                     }
                 }
-                paramMap.put(s, arg);
+
+                params[i][0] = s;
+                params[i][1] = arg;
+                i++;
             }
-            return paramMap;
+            return params;
         }
     }
 
-    public static RequestEncoder encode(Method method, String contentPath, LoadBalancer loadBalancer, long timeout) {
+    private static Encoder encode(Method method, String contentPath, LoadBalancer loadBalancer) {
         String tailUrl;
         HttpMethod httpMethod;
         if (method.isAnnotationPresent(RequestMapping.class)) {
@@ -120,7 +155,8 @@ class Methods {
                     configValue.setIndex(i);
                     if (annotation instanceof PathVariable) {
                         configValue.setRequire(true);
-                        pathVarMap.put(key, configValue);
+                        String index = parser.getIndex(key);
+                        pathVarMap.put(index, configValue);
                     } else {
                         String value = parse(annotation, "defaultValue");
                         boolean require = parse(annotation, "required");
@@ -138,11 +174,11 @@ class Methods {
         int finalIndex = entityIndex;
         boolean finalBodyRequired = bodyRequired;
 
-        BiFunction<Object[], ResponsePromise, Map<String, String>> paramsFunc = (args, promise) ->
+        BiFunction<Object[], ResponsePromise, String[][]> paramsFunc = (args, promise) ->
                 Methods.getArgsByIndex(paramsMap, args, RequestParam.class, promise);
-        BiFunction<Object[], ResponsePromise, Map<String, String>> headersFunc = (args, promise) ->
+        BiFunction<Object[], ResponsePromise, String[][]> headersFunc = (args, promise) ->
                 Methods.getArgsByIndex(headersMap, args, RequestHeaders.class, promise);
-        BiFunction<Object[], ResponsePromise, String[]> pathFunction = (args, promise) -> parser.parsePath(
+        BiFunction<Object[], ResponsePromise, StringBuilder> pathFunction = (args, promise) -> parser.parsePath(
                 Methods.getArgsByIndex(pathVarMap, args, PathVariable.class, promise));
 
         return (args, promise) -> {
@@ -157,18 +193,17 @@ class Methods {
                             CauseType.REQUEST_NULL_BODY);
                 }
             }
-            requestArgs.setLoadBalancer(loadBalancer);
+            requestArgs.setAddress(loadBalancer);
             requestArgs.setMethod(httpMethod);
             requestArgs.setPath(pathFunction.apply(args, promise));
             requestArgs.setParam(paramsFunc.apply(args, promise));
             requestArgs.setHeaders(headersFunc.apply(args, promise));
-            requestArgs.setTimeout(timeout);
             return requestArgs;
         };
     }
 
     @SuppressWarnings("unchecked")
-    static ResponseDecoder decode(Method method) throws ClassNotFoundException {
+    private static Decoder decode(Method method) throws ClassNotFoundException {
         Class returnClass = method.getReturnType();
         Type genReturnType = method.getGenericReturnType();
         if (InvokeUtil.isFinalOrOptional(returnClass)) {
@@ -231,19 +266,20 @@ class Methods {
         return res -> JSON.parseObject(res, finalClass);
     }
 
-    static <T> ProxyMethod asyncProxyMethod(
+    private static <T> ProxyMethod asyncProxyMethod(
             ArgsToPromise<T> arg2Prms,
             long timeout,
             Method method) {
+
         Class returnType = method.getReturnType();
         ProxyMethod finalArg2Obj;
         if (Future.class.isAssignableFrom(returnType)) {
             return arg2Prms::apply;
         }
         ProxyMethod proxyMethod = args -> {//TODO
-            ResponsePromise<T> promise = arg2Prms.apply(args);
-            promise.whenSuccess(timeout);
-            return promise.getEntity();
+            ResponseFuture<T> future = arg2Prms.apply(args);
+            future.whenSuccess(timeout);
+            return future.getEntity();
         };
         if (Optional.class.isAssignableFrom(returnType)) {
             finalArg2Obj = args -> Optional.ofNullable(proxyMethod.apply(args));
@@ -254,10 +290,10 @@ class Methods {
     }
 
 
-    static <T> ArgsToPromise<T> argsToPromise(
-            RequestEncoder encoder,
+    private static <T> ArgsToPromise<T> argsToPromise(
+            Encoder encoder,
             Connector connector,
-            ResponseDecoder<T> decoder) {
+            Decoder<T> decoder) {
 
         return (args) -> {
             ResponsePromise<T> promise = ResponsePromise.create();

@@ -1,10 +1,13 @@
 package httpService.connectors;
 
-import httpService.proxy.SocketAddress;
-import pool.ChannelManager;
+import httpService.RequestArgs;
+import httpService.proxy.*;
+import io.netty.handler.ssl.SslContext;
+import pool.PoolManager;
 import pool.ChannelPool;
 import pool.util.Box;
 
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,8 +17,8 @@ import java.util.function.Supplier;
 public class ConnectorBuilder {
     private Supplier<Connector> supplier;
 
-    public static NettyConnectorBuilder createNetty(List<SocketAddress> socketAddresses) {
-        return new NettyConnectorBuilder(socketAddresses);
+    public static NettyConnectorBuilder createNetty(List<InetSocketAddress> address) {
+        return new NettyConnectorBuilder(address);
     }
 
     public static ConnectorBuilder createHttpClient() {
@@ -29,15 +32,17 @@ public class ConnectorBuilder {
     }
 
     public static class NettyConnectorBuilder extends ConnectorBuilder {
-        private List<SocketAddress> socketAddresses;
+        private List<InetSocketAddress> socketAddresses;
         private int capacity = 32;
         private boolean lazy = false;
         private boolean showRequest = false;
         private boolean showResponse = false;
         private Map<String, String> headers = new HashMap<>();
         private BlockingQueue<Box> queue;
+        private SslContext sslContext;
+        private List<MonitorInitializer> initializers;
 
-        private NettyConnectorBuilder(List<SocketAddress> socketAddresses) {
+        private NettyConnectorBuilder(List<InetSocketAddress> socketAddresses) {
             this.socketAddresses = socketAddresses;
         }
 
@@ -61,11 +66,6 @@ public class ConnectorBuilder {
             return this;
         }
 
-        public NettyConnectorBuilder setHeader(String name, String value) {
-            this.headers.put(name, value);
-            return this;
-        }
-
         public NettyConnectorBuilder setHeaders(Map<String, String> headers) {
             this.headers.putAll(headers);
             return this;
@@ -76,23 +76,61 @@ public class ConnectorBuilder {
             return this;
         }
 
+        public NettyConnectorBuilder setSslContext(SslContext sslContext) {
+            this.sslContext = sslContext;
+            return this;
+        }
+
+        public NettyConnectorBuilder setMonitors(List<MonitorInitializer> inits) {
+            this.initializers = inits;
+            return this;
+        }
+
         @Override
         public Connector build() {
-            for (SocketAddress socketAddress : this.socketAddresses) {
-                if (!ChannelManager.exist(socketAddress.get())) {
+            for (InetSocketAddress socketAddress : this.socketAddresses) {
+                String[][] defaultHeaders = new String[headers.size()][2];
+                int i = 0;
+                for (Map.Entry<String, String> entry : headers.entrySet()) {
+                    defaultHeaders[i][0] = entry.getKey();
+                    defaultHeaders[i][1] = entry.getValue();
+                    i++;
+                }
+
+                if (!PoolManager.exist(socketAddress.toString())) {
                     Supplier<ChannelPool> pool = () -> new ChannelPool(
                             socketAddress,
                             capacity,
                             lazy,
-                            headers,
+                            sslContext,
+                            defaultHeaders,
                             queue,
                             showRequest,
                             showResponse
                     );
-                    ChannelManager.register(socketAddress.get(), pool);
+                    PoolManager.register(socketAddress.toString(), pool);
                 }
             }
-            return new NettyConnector();
+            Connector connector = new NettyConnector();
+            if (initializers != null && !initializers.isEmpty()) {
+                for (MonitorInitializer initializer : initializers) {
+                    connector = decorateConnector(connector, initializer.init());
+                }
+            }
+            return connector;
+        }
+
+        private static Connector decorateConnector(Connector connector, Monitor monitor) {
+            return new Connector() {
+                @Override
+                public <T> ResponseFuture<T> executeAsync(RequestArgs args, Decoder<T> decoder, ResponsePromise<T> promise) {
+                    monitor.before(args, decoder, promise);
+                    return connector.executeAsync(args, decoder, promise)
+                            .addListener(monitor::after);
+                }
+            };
         }
     }
+
+
 }

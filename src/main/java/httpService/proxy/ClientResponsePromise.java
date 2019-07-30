@@ -1,4 +1,4 @@
-package httpService.connectors.netty;
+package httpService.proxy;
 
 import httpService.exceptions.CauseType;
 import httpService.exceptions.ConnectionException;
@@ -43,6 +43,26 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
         this.causeType = type;
         this.isSuccess = false;
         return receive();
+    }
+
+    @Override
+    public void setSuccess(boolean isSuccess) {
+        this.isSuccess = isSuccess;
+    }
+
+    @Override
+    public void setEntity(T entity) {
+        this.entity = entity;
+    }
+
+    @Override
+    public void setCause(Throwable cause) {
+        this.cause = cause;
+    }
+
+    @Override
+    public void setCauseType(CauseType causeType) {
+        this.causeType = causeType;
     }
 
     @Override
@@ -113,18 +133,6 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
     @Override
     public ResponseFuture<T> addListener(FutureListener<T> listener) {
         this.listeners.add(listener);
-        return this;
-    }
-
-    @Override
-    public ResponseFuture<T> addFallBackMethod(FallBackMethod<T> fallBackMethod) {
-        FutureListener<T> listener = promise -> {
-            if (isDoneAndFailed()) {
-                this.entity = fallBackMethod.apply(cause, causeType);
-                this.isSuccess = true;
-            }
-        };
-        addListener(listener);
         return this;
     }
 

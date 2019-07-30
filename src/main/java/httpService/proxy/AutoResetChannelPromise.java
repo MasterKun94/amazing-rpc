@@ -1,17 +1,16 @@
-package httpService.connectors.netty;
+package httpService.proxy;
 
 import httpService.exceptions.CauseType;
 import httpService.exceptions.UnexpectedException;
-import pool.ChannelHolder;
-import pool.ChannelManager;
+import pool.ReleaseAble;
 
 import java.util.concurrent.TimeUnit;
 
 public class AutoResetChannelPromise extends ClientResponsePromise<String> {
 
-    private final ChannelHolder holder;
+    private final ReleaseAble holder;
 
-    public AutoResetChannelPromise(ChannelHolder holder) {
+    public AutoResetChannelPromise(ReleaseAble holder) {
         this.holder = holder;
     }
 
@@ -92,13 +91,12 @@ public class AutoResetChannelPromise extends ClientResponsePromise<String> {
             if (super.reset()) {
                 return true;
             } else {
-                ChannelManager.close(holder);
+                holder.close();
                 throw new UnexpectedException();
             }
         } finally {
-            ChannelManager.release(holder);
+            holder.release();
         }
-
     }
 
     @Override

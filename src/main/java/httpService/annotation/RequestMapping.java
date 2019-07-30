@@ -1,6 +1,9 @@
 package httpService.annotation;
 
 import httpService.HttpMethod;
+import httpService.proxy.DefaultFallBackMethod;
+import httpService.proxy.FallBackMethod;
+import httpService.proxy.FutureListener;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

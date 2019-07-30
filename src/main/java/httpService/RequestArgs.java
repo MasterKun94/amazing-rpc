@@ -1,25 +1,24 @@
 package httpService;
 
-import httpService.connectors.LoadBalancer;
+import httpService.proxy.LoadBalancer;
 
-import java.util.Map;
+import java.net.InetSocketAddress;
 
 public class RequestArgs {
-    private LoadBalancer loadBalancer;
-    private String[] path;
+    private InetSocketAddress address;
+    private StringBuilder path;
     private HttpMethod method;
-    private Map<String, String> param;
-    private Map<String, String> headers;
+    private String[][] param;
+    private String[][] headers;
     private String entity;
-    private long timeout;
 
     public RequestArgs() {}
 
-    public LoadBalancer getLoadBalancer() {
-        return loadBalancer;
+    public InetSocketAddress getAddress() {
+        return address;
     }
 
-    public String[] getPath() {
+    public StringBuilder getPath() {
         return this.path;
     }
 
@@ -27,11 +26,11 @@ public class RequestArgs {
         return this.method;
     }
 
-    public Map<String, String> getParam() {
+    public String[][] getParam() {
         return this.param;
     }
 
-    public Map<String, String> getHeaders() {
+    public String[][] getHeaders() {
         return this.headers;
     }
 
@@ -39,15 +38,15 @@ public class RequestArgs {
         return this.entity;
     }
 
-    public long getTimeout() {
-        return this.timeout;
+    public void setAddress(LoadBalancer balancer) {
+        this.address = balancer.select();
     }
 
-    public void setLoadBalancer(LoadBalancer loadBalancer) {
-        this.loadBalancer = loadBalancer;
+    public void setAddress(InetSocketAddress address) {
+        this.address = address;
     }
 
-    public void setPath(String[] path) {
+    public void setPath(StringBuilder path) {
         this.path = path;
     }
 
@@ -55,11 +54,11 @@ public class RequestArgs {
         this.method = method;
     }
 
-    public void setParam(Map<String, String> param) {
+    public void setParam(String[][] param) {
         this.param = param;
     }
 
-    public void setHeaders(Map<String, String> headers) {
+    public void setHeaders(String[][] headers) {
         this.headers = headers;
     }
 
@@ -67,7 +66,4 @@ public class RequestArgs {
         this.entity = entity;
     }
 
-    public void setTimeout(long timeout) {
-        this.timeout = timeout;
-    }
 }

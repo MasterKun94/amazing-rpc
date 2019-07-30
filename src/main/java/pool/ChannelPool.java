@@ -1,33 +1,34 @@
 package pool;
 
 import httpService.DefaultArgs;
-import httpService.proxy.SocketAddress;
-import pool.util.BlockingPool;
-import pool.util.Box;
-import pool.util.ElementInitializer;
-import pool.util.Pools;
+import httpService.connectors.Connector;
+import io.netty.handler.ssl.SslContext;
+import pool.util.*;
 
-import java.util.Map;
+import java.net.InetSocketAddress;
 import java.util.concurrent.BlockingQueue;
 
-public class ChannelPool implements BlockingPool<ChannelHolder> {
-    private final BlockingPool<ChannelHolder> pool;
+public class ChannelPool implements BlockingPool<Connector> {
+    private final BlockingPool<Connector> pool;
 
     public ChannelPool(
-            SocketAddress address,
+            InetSocketAddress address,
             int capacity,
             boolean lazy,
-            Map<String, String> defaultHeaders,
+            SslContext sslContext,
+            String[][] defaultHeaders,
             BlockingQueue<Box> queue,
             boolean showRequest,
             boolean showResponse) {
         DefaultArgs args = new DefaultArgs(address, defaultHeaders);
-        ElementInitializer<ChannelHolder> init = () -> new ChannelHolder(args, lazy, showRequest, showResponse);
+        IndexElementInitializer<Connector> init = (index) ->
+            new ChannelHolderConnector(args, sslContext, lazy, showRequest, showResponse, index);
+
         pool = Pools.immutableBlockingPool(capacity, init, queue);
     }
 
     @Override
-    public ChannelHolder get() throws InterruptedException {
+    public Connector get() throws InterruptedException {
         return pool.get();
     }
 
@@ -42,7 +43,7 @@ public class ChannelPool implements BlockingPool<ChannelHolder> {
     }
 
     @Override
-    public ChannelHolder borrow() {
+    public Connector borrow() {
         return pool.borrow();
     }
 
@@ -52,12 +53,12 @@ public class ChannelPool implements BlockingPool<ChannelHolder> {
     }
 
     @Override
-    public ChannelHolder request() {
+    public Connector request() {
         return pool.request();
     }
 
     @Override
-    public int addReference(ChannelHolder channel) {
+    public int addReference(Connector channel) {
         return pool.addReference(channel);
     }
 
@@ -67,7 +68,7 @@ public class ChannelPool implements BlockingPool<ChannelHolder> {
     }
 
     @Override
-    public int release(ChannelHolder channel) {
+    public int release(Connector channel) {
         return pool.release(channel);
     }
 
@@ -77,7 +78,7 @@ public class ChannelPool implements BlockingPool<ChannelHolder> {
     }
 
     @Override
-    public int getCounter(ChannelHolder channel) {
+    public int getCounter(Connector channel) {
         return pool.getCounter(channel);
     }
 
@@ -87,15 +88,13 @@ public class ChannelPool implements BlockingPool<ChannelHolder> {
     }
 
     @Override
-    public int getPointer(ChannelHolder channel) {
+    public int getPointer(Connector channel) {
         return pool.getPointer(channel);
     }
 
     @Override
-    public ChannelHolder getElement(int pointer) {
-        ChannelHolder holder = pool.getElement(pointer);
-        holder.setPoolIndex(pointer);
-        return holder;
+    public Connector getElement(int pointer) {
+        return pool.getElement(pointer);
     }
 
     @Override

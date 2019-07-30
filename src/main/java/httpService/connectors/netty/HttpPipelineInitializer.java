@@ -7,7 +7,7 @@ import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
-import pool.ChannelHolder;
+import pool.ReleaseAble;
 
 import javax.net.ssl.SSLEngine;
 import java.nio.charset.Charset;
@@ -17,13 +17,9 @@ public class HttpPipelineInitializer extends ChannelInitializer<Channel> {
     private final boolean showRequest;
     private final boolean showResponse;
     private final SslContext sslContext;
-    private final ChannelHolder holder;
+    private final ReleaseAble holder;
 
-    HttpPipelineInitializer(ChannelHolder holder, boolean showRequest, boolean showResponse) {
-        this(holder, null, showRequest, showResponse);
-    }
-
-    HttpPipelineInitializer(ChannelHolder holder, SslContext sslContext, boolean showRequest, boolean showResponse) {
+    HttpPipelineInitializer(ReleaseAble holder, SslContext sslContext, boolean showRequest, boolean showResponse) {
         this.sslEnable = sslContext != null;
         this.showRequest = showRequest;
         this.showResponse = showResponse;
