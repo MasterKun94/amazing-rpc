@@ -1,8 +1,6 @@
 package httpService.connectors.netty;
 
 import httpService.proxy.AutoResetChannelPromise;
-import httpService.proxy.ResponseFuture;
-import httpService.proxy.ResponsePromise;
 import httpService.exceptions.CauseType;
 import httpService.exceptions.ServerException;
 import httpService.exceptions.UnexpectedException;
@@ -12,12 +10,12 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pool.ReleaseAble;
+import httpService.proxy.ReleaseAble;
 
 import java.nio.charset.Charset;
 
 public class HttpResponseHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
-    private final ResponsePromise<String> promise;
+    private final AutoResetChannelPromise promise;
     private final Charset charset;
 
     private static final Logger logger = LoggerFactory.getLogger(HttpResponseHandler.class);
@@ -35,12 +33,7 @@ public class HttpResponseHandler extends SimpleChannelInboundHandler<FullHttpRes
             ServerException exception = ServerException.create(status, response);
             promise.receive(response, exception, exception.getType());
         } else if (!promise.isDone()) {
-            ByteBuf byteBuf = msg.content();
-            if (byteBuf.writerIndex() == 0) {
-                promise.receive("");
-            } else {
-                promise.receive(byteBuf.toString(charset));
-            }
+            promise.receive(msg.content().toString(charset));
         } else {
             ctx.channel().close();
             throw new UnexpectedException(this.toString());
@@ -57,7 +50,7 @@ public class HttpResponseHandler extends SimpleChannelInboundHandler<FullHttpRes
         ctx.channel().closeFuture();//TODO add listener
     }
 
-    public ResponseFuture<String> getFuture() {
+    public AutoResetChannelPromise getFuture() {
         return this.promise;
     }
 }

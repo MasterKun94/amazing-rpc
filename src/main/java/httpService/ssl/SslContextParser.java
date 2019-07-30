@@ -1,5 +1,6 @@
 package httpService.ssl;
 
+import httpService.annotation.SslConfig;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 
@@ -10,7 +11,7 @@ import java.io.FileInputStream;
 import java.security.KeyStore;
 import java.util.Arrays;
 
-public class SslContextFactory {
+public class SslContextParser {
     private static final String DEFAULT = "";
 
     public static SslContext get(SslConfig sslConfig) {

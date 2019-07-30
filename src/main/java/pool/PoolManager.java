@@ -1,6 +1,7 @@
 package pool;
 
 import httpService.connectors.Connector;
+import httpService.proxy.ReleaseAble;
 import httpService.proxy.ResponseFuture;
 import httpService.proxy.ResponsePromise;
 import httpService.exceptions.CauseType;

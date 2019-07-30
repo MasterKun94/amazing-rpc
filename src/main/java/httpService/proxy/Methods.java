@@ -1,28 +1,21 @@
 package httpService.proxy;
 
 import com.alibaba.fastjson.JSON;
-import httpService.HttpMethod;
-import httpService.RequestArgs;
 import httpService.annotation.*;
 import httpService.connectors.*;
 import httpService.exceptions.BadRequestException;
 import httpService.exceptions.CauseType;
-import httpService.ssl.SslContextFactory;
-import httpService.util.UrlParser;
-import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
-import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import static httpService.util.AliasUtil.parse;
+import static httpService.proxy.AliasUtil.parse;
 
 class Methods<T> {
     private Method method;
@@ -206,9 +199,9 @@ class Methods<T> {
     private static Decoder decode(Method method) throws ClassNotFoundException {
         Class returnClass = method.getReturnType();
         Type genReturnType = method.getGenericReturnType();
-        if (InvokeUtil.isFinalOrOptional(returnClass)) {
-            genReturnType = InvokeUtil.getTypeArgument(genReturnType);
-            returnClass = InvokeUtil.getClassByType(genReturnType);
+        if (isFinalOrOptional(returnClass)) {
+            genReturnType = getTypeArgument(genReturnType);
+            returnClass = getClassByType(genReturnType);
         }
 
         final Class finalClass = returnClass;
@@ -231,7 +224,7 @@ class Methods<T> {
             };
         }
 
-        if (InvokeUtil.isAssignable(Collection.class, finalClass)) {
+        if (isAssignable(Collection.class, finalClass)) {
             Function<String, List> listFunction;
             if (genReturnType instanceof ParameterizedType) {
                 ParameterizedType returnType = (ParameterizedType) genReturnType;
@@ -241,16 +234,16 @@ class Methods<T> {
             } else {
                 listFunction = JSON::parseArray;
             }
-            if (InvokeUtil.isAssignable(ArrayList.class, finalClass)) {
+            if (isAssignable(ArrayList.class, finalClass)) {
                 return listFunction::apply;
             }
-            if (InvokeUtil.isAssignable(LinkedList.class, finalClass)) {
+            if (isAssignable(LinkedList.class, finalClass)) {
                 return str -> new LinkedList<>(listFunction.apply(str));
             }
-            if (InvokeUtil.isAssignable(HashSet.class, finalClass)) {
+            if (isAssignable(HashSet.class, finalClass)) {
                 return str -> new HashSet<>(listFunction.apply(str));
             }
-            if (InvokeUtil.isAssignable(TreeSet.class, finalClass)) {
+            if (isAssignable(TreeSet.class, finalClass)) {
                 return str -> new TreeSet<>(listFunction.apply(str));
             }
 
@@ -302,6 +295,30 @@ class Methods<T> {
                     promise :
                     connector.executeAsync(requestArgs, decoder, promise);
         };
+    }
+
+
+    private static boolean isFinalOrOptional(Class clazz) {
+        return Future.class.isAssignableFrom(clazz) ||
+                Optional.class.isAssignableFrom(clazz);
+    }
+
+    private static Type getTypeArgument(Type type) {
+        ParameterizedType returnType = (ParameterizedType) type;
+        return returnType.getActualTypeArguments()[0];
+    }
+
+    private static Class getClassByType(Type type) {
+        String typeName = type.getTypeName().split("<")[0];
+        try {
+            return Class.forName(typeName);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static <T> boolean isAssignable(Class<T> parent, Class child) {
+        return parent.isAssignableFrom(child);
     }
 
 }

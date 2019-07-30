@@ -1,4 +1,4 @@
-package pool.util;
+package pool.poolUtil;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -8,7 +8,7 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 public  class ImmutablePool<T> implements Pool<T> {
-    private static final int ELE_SIZE = 8;
+    private static final int ELE_SIZE = 4;
 
     private final T[] elements;
     private final AtomicIntegerArray referenceCounter;

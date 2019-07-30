@@ -1,6 +1,6 @@
 package httpService.connectors;
 
-import httpService.RequestArgs;
+import httpService.proxy.RequestArgs;
 import httpService.exceptions.UnexpectedException;
 import httpService.proxy.Decoder;
 import httpService.proxy.ResponseFuture;

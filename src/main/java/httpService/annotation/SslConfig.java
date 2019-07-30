@@ -1,4 +1,4 @@
-package httpService.ssl;
+package httpService.annotation;
 
 public @interface SslConfig {
     boolean enabled() default false;

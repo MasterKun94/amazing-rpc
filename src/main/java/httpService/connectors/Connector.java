@@ -1,6 +1,6 @@
 package httpService.connectors;
 
-import httpService.RequestArgs;
+import httpService.proxy.RequestArgs;
 import httpService.proxy.Decoder;
 import httpService.proxy.ResponseFuture;
 import httpService.proxy.ResponsePromise;

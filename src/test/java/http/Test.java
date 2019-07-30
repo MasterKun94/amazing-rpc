@@ -1,6 +1,5 @@
 package http;
 
-import httpService.RequestArgs;
 import httpService.proxy.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,13 +17,13 @@ public class Test {
                             private Logger logger = LoggerFactory.getLogger(this.getClass());
 
                             @Override
-                            public void before(RequestArgs requestArgs, Decoder decoder, ResponsePromise promise) {
-                                logger.info("before");
+                            public void beforeSendRequest() {
+                                logger.info("beforeSendRequest");
                             }
 
                             @Override
-                            public void after(ResponseFuture future) {
-                                logger.info("after");
+                            public void afterReceiveResponse(ResponseFuture future) {
+                                logger.info("afterReceiveResponse");
                             }
                         };
                     }
@@ -36,12 +35,12 @@ public class Test {
                             private Logger logger = LoggerFactory.getLogger(this.getClass());
 
                             @Override
-                            public void before(RequestArgs requestArgs, Decoder decoder, ResponsePromise promise) {
+                            public void beforeSendRequest() {
                                 logger.info("before0");
                             }
 
                             @Override
-                            public void after(ResponseFuture future) {
+                            public void afterReceiveResponse(ResponseFuture future) {
                                 logger.info("after0");
                             }
                         };

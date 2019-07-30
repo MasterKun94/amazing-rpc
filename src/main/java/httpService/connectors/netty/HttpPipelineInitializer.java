@@ -7,7 +7,7 @@ import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
-import pool.ReleaseAble;
+import httpService.proxy.ReleaseAble;
 
 import javax.net.ssl.SSLEngine;
 import java.nio.charset.Charset;

@@ -1,4 +1,4 @@
-package pool.util;
+package pool.poolUtil;
 
 public interface BlockingPool<T> extends Pool<T> {
     T get() throws InterruptedException;

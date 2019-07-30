@@ -2,7 +2,6 @@ package httpService.proxy;
 
 import httpService.exceptions.CauseType;
 import httpService.exceptions.UnexpectedException;
-import pool.ReleaseAble;
 
 import java.util.concurrent.TimeUnit;
 

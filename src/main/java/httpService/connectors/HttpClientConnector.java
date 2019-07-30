@@ -2,7 +2,7 @@ package httpService.connectors;
 
 import httpService.connectors.httpClient.HttpBuilder;
 import httpService.connectors.httpClient.HttpConnector;
-import httpService.RequestArgs;
+import httpService.proxy.RequestArgs;
 import httpService.proxy.Decoder;
 import httpService.proxy.ResponseFuture;
 import httpService.proxy.ResponsePromise;

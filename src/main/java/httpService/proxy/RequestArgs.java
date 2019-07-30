@@ -1,6 +1,4 @@
-package httpService;
-
-import httpService.proxy.LoadBalancer;
+package httpService.proxy;
 
 import java.net.InetSocketAddress;
 

@@ -1,9 +1,7 @@
 package httpService.proxy;
 
-import httpService.RequestArgs;
-
 public interface Monitor {
-    void before(RequestArgs requestArgs, Decoder decoder, ResponsePromise promise);
+    void beforeSendRequest();
 
-    void after(ResponseFuture future);
+    void afterReceiveResponse(ResponseFuture future);
 }

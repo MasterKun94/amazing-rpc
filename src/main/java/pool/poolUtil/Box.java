@@ -1,4 +1,4 @@
-package pool.util;
+package pool.poolUtil;
 
 public class Box {
     private static final int EMPTY = -1;

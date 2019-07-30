@@ -1,4 +1,4 @@
-package httpService.util;
+package httpService.proxy;
 
 import httpService.annotation.Alias;
 

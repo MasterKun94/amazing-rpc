@@ -1,7 +1,6 @@
 package httpService.annotation;
 
 import httpService.connectors.ConnectorType;
-import httpService.ssl.SslConfig;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

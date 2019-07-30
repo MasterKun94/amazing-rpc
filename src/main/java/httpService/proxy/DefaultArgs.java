@@ -1,4 +1,4 @@
-package httpService;
+package httpService.proxy;
 
 import java.net.InetSocketAddress;
 

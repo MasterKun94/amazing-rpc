@@ -5,7 +5,7 @@ import httpService.annotation.ServiceContext;
 import httpService.connectors.Connector;
 import httpService.connectors.ConnectorBuilder;
 import httpService.connectors.ConnectorType;
-import httpService.ssl.SslContextFactory;
+import httpService.ssl.SslContextParser;
 import io.netty.handler.ssl.SslContext;
 
 import java.lang.reflect.InvocationHandler;
@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import static httpService.util.AliasUtil.parse;
+import static httpService.proxy.AliasUtil.parse;
 
 @SuppressWarnings("unchecked")
 public class HttpProxyGeneratorImpl implements HttpProxyGenerator {
@@ -95,7 +95,7 @@ public class HttpProxyGeneratorImpl implements HttpProxyGenerator {
                                        List<InetSocketAddress> addresses,
                                        List<MonitorInitializer> initializers) {
 
-        SslContext sslContext = SslContextFactory.get(context.sslConfig());
+        SslContext sslContext = SslContextParser.get(context.sslConfig());
         int capacity = parse(context, "poolCapacity");
         boolean lazy = parse(context, "lazyInit");
         boolean showRequest = parse(context, "showRequest");

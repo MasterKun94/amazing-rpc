@@ -1,14 +1,8 @@
-package pool;
+package httpService.proxy;
 
-import httpService.DefaultArgs;
-import httpService.RequestArgs;
-import httpService.proxy.ClientResponsePromise;
 import httpService.connectors.Connector;
-import httpService.proxy.ResponseFuture;
-import httpService.proxy.ResponsePromise;
 import httpService.connectors.netty.*;
 import httpService.exceptions.CauseType;
-import httpService.proxy.Decoder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -20,12 +14,13 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.util.CharsetUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pool.PoolManager;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 
 public class ChannelHolderConnector implements Connector, ReleaseAble {
-    private ResponseFuture<String> future;
+    private AutoResetChannelPromise future;
     private Channel channel;
 
     private final int poolIndex;
@@ -37,7 +32,7 @@ public class ChannelHolderConnector implements Connector, ReleaseAble {
 
     private static final Logger logger = LoggerFactory.getLogger(ChannelHolderConnector.class);
 
-    ChannelHolderConnector(
+    public ChannelHolderConnector(
             DefaultArgs defaultArgs,
             SslContext sslContext,
             boolean lazy,

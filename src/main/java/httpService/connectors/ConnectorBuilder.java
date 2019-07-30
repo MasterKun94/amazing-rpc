@@ -1,11 +1,11 @@
 package httpService.connectors;
 
-import httpService.RequestArgs;
+import httpService.proxy.RequestArgs;
 import httpService.proxy.*;
 import io.netty.handler.ssl.SslContext;
 import pool.PoolManager;
 import pool.ChannelPool;
-import pool.util.Box;
+import pool.poolUtil.Box;
 
 import java.net.InetSocketAddress;
 import java.util.HashMap;
@@ -124,9 +124,9 @@ public class ConnectorBuilder {
             return new Connector() {
                 @Override
                 public <T> ResponseFuture<T> executeAsync(RequestArgs args, Decoder<T> decoder, ResponsePromise<T> promise) {
-                    monitor.before(args, decoder, promise);
+                    monitor.beforeSendRequest();
                     return connector.executeAsync(args, decoder, promise)
-                            .addListener(monitor::after);
+                            .addListener(monitor::afterReceiveResponse);
                 }
             };
         }

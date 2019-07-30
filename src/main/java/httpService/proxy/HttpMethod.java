@@ -1,4 +1,4 @@
-package httpService;
+package httpService.proxy;
 
 public enum HttpMethod {
     GET(io.netty.handler.codec.http.HttpMethod.GET),

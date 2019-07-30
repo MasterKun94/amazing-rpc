@@ -1,9 +1,10 @@
 package pool;
 
-import httpService.DefaultArgs;
+import httpService.proxy.ChannelHolderConnector;
+import httpService.proxy.DefaultArgs;
 import httpService.connectors.Connector;
 import io.netty.handler.ssl.SslContext;
-import pool.util.*;
+import pool.poolUtil.*;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.BlockingQueue;
@@ -18,11 +19,11 @@ public class ChannelPool implements BlockingPool<Connector> {
             SslContext sslContext,
             String[][] defaultHeaders,
             BlockingQueue<Box> queue,
-            boolean showRequest,
-            boolean showResponse) {
+            boolean showReq,
+            boolean showRes) {
         DefaultArgs args = new DefaultArgs(address, defaultHeaders);
         IndexElementInitializer<Connector> init = (index) ->
-            new ChannelHolderConnector(args, sslContext, lazy, showRequest, showResponse, index);
+            new ChannelHolderConnector(args, sslContext, lazy, showReq, showRes, index);
 
         pool = Pools.immutableBlockingPool(capacity, init, queue);
     }

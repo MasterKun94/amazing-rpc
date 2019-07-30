@@ -1,8 +1,7 @@
-package httpService.util;
+package httpService.proxy;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class UrlParser {
     private final String[] url;

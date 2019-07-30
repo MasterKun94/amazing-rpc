@@ -1,7 +1,7 @@
 package http;
 
-import httpService.*;
 import httpService.annotation.*;
+import httpService.proxy.HttpMethod;
 
 import java.util.List;
 import java.util.TreeMap;

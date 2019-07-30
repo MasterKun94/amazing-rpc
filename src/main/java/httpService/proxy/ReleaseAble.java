@@ -1,4 +1,4 @@
-package pool;
+package httpService.proxy;
 
 import httpService.proxy.ResponseFuture;
 
