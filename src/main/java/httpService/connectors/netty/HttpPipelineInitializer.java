@@ -1,5 +1,6 @@
 package httpService.connectors.netty;
 
+import httpService.proxy.AutoResetChannelPromise;
 import httpService.proxy.ReleaseAble;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -17,14 +18,21 @@ public class HttpPipelineInitializer extends ChannelInitializer<Channel> {
     private final boolean showRequest;
     private final boolean showResponse;
     private final SslContext sslContext;
-    private final ReleaseAble holder;
+    private final AutoResetChannelPromise promise;
+    private final Charset charset;
 
-    HttpPipelineInitializer(ReleaseAble holder, SslContext sslContext, boolean showRequest, boolean showResponse) {
+    HttpPipelineInitializer(
+            ReleaseAble holder,
+            SslContext sslContext,
+            boolean showRequest,
+            boolean showResponse,
+            Charset charset) {
         this.sslEnable = sslContext != null;
         this.showRequest = showRequest;
         this.showResponse = showResponse;
-        this.holder = holder;
+        this.promise = new AutoResetChannelPromise(holder);
         this.sslContext = sslContext;
+        this.charset = charset;
     }
 
     @Override
@@ -40,8 +48,9 @@ public class HttpPipelineInitializer extends ChannelInitializer<Channel> {
         if (showResponse) {
             pipeline.addLast(new ReadHandler());
         }
+        int maxContentLength = 10 * 1024 * 1024;
         pipeline.addLast(new HttpClientCodec())
-                .addLast(new HttpObjectAggregator(10 * 1024 * 1024))
-                .addLast(new HttpResponseHandler(Charset.defaultCharset(), holder));
+                .addLast(new HttpObjectAggregator(maxContentLength))
+                .addLast(new RPCHandler(charset, promise));
     }
 }

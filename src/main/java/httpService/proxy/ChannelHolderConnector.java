@@ -2,15 +2,13 @@ package httpService.proxy;
 
 import httpService.connectors.Connector;
 import httpService.connectors.netty.Client;
-import httpService.connectors.netty.HttpResponseHandler;
+import httpService.connectors.netty.RPCHandler;
 import httpService.exceptions.CauseType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
-import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.HttpVersion;
+import io.netty.channel.ChannelFuture;
+import io.netty.handler.codec.http.*;
 import io.netty.handler.ssl.SslContext;
 import io.netty.util.CharsetUtil;
 import org.slf4j.Logger;
@@ -21,7 +19,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 
 public class ChannelHolderConnector implements Connector, ReleaseAble {
-    private HttpResponseHandler handler;
+    private RPCHandler handler;
     private Channel channel;
 
     private final int poolIndex;
@@ -47,14 +45,23 @@ public class ChannelHolderConnector implements Connector, ReleaseAble {
         this.defaultArgs = defaultArgs;
         this.poolIndex = index;
         if (!lazy) {
-            this.channel = Client.start(
-                    defaultArgs.getAddress(),
-                    null,
+            InetSocketAddress address = defaultArgs.getAddress();
+            ChannelFuture future = Client.start(
+                    address,
                     this,
                     sslContext,
                     showRequest,
-                    showResponse);
-            this.handler = channel.pipeline().get(HttpResponseHandler.class);
+                    showResponse,
+                    charset
+            );
+            if (future.isSuccess()) {
+                this.channel = future.channel();
+                logger.debug("{}, [{}] connect success", address, channel);
+            } else {
+                logger.error("{} connect failed", address);
+                throw new RuntimeException(future.cause());
+            }
+            this.handler = channel.pipeline().get(RPCHandler.class);
         }
     }
 
@@ -86,8 +93,8 @@ public class ChannelHolderConnector implements Connector, ReleaseAble {
 
     @Override
     public ResponseFuture<Void> close() {
-        ResponsePromise<Void> responsePromise = new ClientResponsePromise<>();
-        responsePromise.addListener(future -> {
+        ResponsePromise<Void> promise = new ClientResponsePromise<>();
+        promise.addListener(future -> {
             if (future.isDoneAndSuccess()) {
                 logger.warn("Channel close success, channel holder: [{}]", this);
             } else {
@@ -98,23 +105,40 @@ public class ChannelHolderConnector implements Connector, ReleaseAble {
         channel.close().addListener(future -> {
 
             if (future.isSuccess()) {
-                responsePromise.receive(null);
+                promise.receive(null);
             } else {
-                responsePromise.receive(future.cause(), CauseType.DEFAULT);
+                promise.receive(future.cause(), CauseType.DEFAULT);
             }
         });
 
-        return responsePromise;
+        return promise;
     }
 
     private Channel getChannel(ResponsePromise promise) {
-        if (this.channel == null || !this.channel.isActive()) {
-            this.channel = Client.start(defaultArgs.getAddress(), promise, this, sslContext, showRequest, showResponse);
-            if (promise.isDone()) {
-                return null;
-            }
-            this.handler = channel.pipeline().get(HttpResponseHandler.class);
+        if (channel != null && channel.isActive()) {
+            return channel;
         }
+
+        InetSocketAddress address = defaultArgs.getAddress();
+        ChannelFuture future = this.channel == null ?
+                Client.start(address,
+                        this,
+                        sslContext,
+                        showRequest,
+                        showResponse,
+                        charset) :
+                channel.connect(address);
+
+        this.channel = future.syncUninterruptibly().channel();
+        this.handler = channel.pipeline().get(RPCHandler.class);
+
+        if (future.isSuccess()) {
+            logger.debug("{}, [{}] reconnect success", address, future.channel());
+        } else {
+            promise.receive(future.cause(), CauseType.CONNECTION_CONNECT_FAILED);
+            logger.debug("{}, [{}] reconnect failed", address, future.channel());
+        }
+
         return channel;
     }
 
@@ -132,12 +156,7 @@ public class ChannelHolderConnector implements Connector, ReleaseAble {
                 url,
                 body);
 
-        fullFillHeaders(
-                request.headers(),
-                requestArgs.getHeaders(),
-                defaultArgs.getHeaders(),
-                defaultArgs.getAddress(),
-                body);
+        fullFillHeaders(request.headers(), requestArgs.getHeaders(), body);
 
         return request;
     }
@@ -172,10 +191,8 @@ public class ChannelHolderConnector implements Connector, ReleaseAble {
     private void fullFillHeaders(
             HttpHeaders httpHeaders,
             String[][] headers,
-            String[][] defaultHeaders,
-            InetSocketAddress address,
             ByteBuf byteBuf) {
-
+        String[][] defaultHeaders = defaultArgs.getHeaders();
         if (defaultHeaders != null && defaultHeaders.length > 0) {
             for (String[] defaultHeader : defaultHeaders) {
                 httpHeaders.set(defaultHeader[0], defaultHeader[1]);
@@ -187,7 +204,7 @@ public class ChannelHolderConnector implements Connector, ReleaseAble {
             }
         }
 
-        httpHeaders.set("Host", address.getHostString() + ":" + address.getPort());
+        httpHeaders.set("Host", defaultArgs.getAddress());
         httpHeaders.set("Content-Length", byteBuf.writerIndex());
         httpHeaders.add("Content-Type", charset);
     }

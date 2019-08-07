@@ -14,15 +14,15 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
 
-public class HttpResponseHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
+public class RPCHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
     private final AutoResetChannelPromise promise;
     private final Charset charset;
     private ChannelPipeline pipeline;
-    private static final Logger logger = LoggerFactory.getLogger(HttpResponseHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(RPCHandler.class);
 
-    public HttpResponseHandler(Charset charset, ReleaseAble holder) {
+    public RPCHandler(Charset charset, AutoResetChannelPromise promise) {
         this.charset = charset;
-        this.promise = new AutoResetChannelPromise(holder);
+        this.promise = promise;
     }
 
     @Override
