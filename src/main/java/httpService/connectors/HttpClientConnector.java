@@ -14,14 +14,12 @@ public class HttpClientConnector implements Connector {
 
     public <T> T execute(RequestArgs requestArgs, Decoder<T> decoder, ResponsePromise<T> promise) throws Exception {
         InetSocketAddress socketAddress = requestArgs.getAddress();
-        StringBuilder stringBuilder = new StringBuilder()
-                .append("http://")
-                .append(socketAddress.toString())
-                .append(":")
-                .append(socketAddress.getPort())
-                .append(requestArgs.getPath());
 
-        String url = stringBuilder.toString();
+        String url = "http://" +
+                socketAddress.toString() +
+                ":" +
+                socketAddress.getPort() +
+                requestArgs.getPath();
 //        System.out.println(url);
         HttpBuilder builder;
         switch (requestArgs.getMethod()) {

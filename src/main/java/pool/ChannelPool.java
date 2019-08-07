@@ -113,6 +113,7 @@ public class ChannelPool implements BlockingPool<Connector> {
         return pool.size();
     }
 
+    @Override
     public String toString() {
         return "ChannelPool(size: " + size() +
                 ", available: " + availableAmount() +

@@ -1,5 +1,6 @@
 package httpService.connectors.netty;
 
+import httpService.proxy.ReleaseAble;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -7,7 +8,6 @@ import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
-import httpService.proxy.ReleaseAble;
 
 import javax.net.ssl.SSLEngine;
 import java.nio.charset.Charset;

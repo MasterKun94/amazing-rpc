@@ -1,5 +1,6 @@
 package httpService.connectors.netty;
 
+import httpService.proxy.ReleaseAble;
 import httpService.proxy.ResponsePromise;
 import httpService.exceptions.CauseType;
 import io.netty.bootstrap.Bootstrap;
@@ -11,14 +12,13 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import httpService.proxy.ReleaseAble;
 
 import java.net.InetSocketAddress;
 
 public class Client {
 
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
-    private static final EventLoopGroup group = new NioEventLoopGroup();
+    private static final EventLoopGroup GROUP = new NioEventLoopGroup();
 
     public static Channel start(
             InetSocketAddress address,
@@ -30,15 +30,15 @@ public class Client {
 
         Bootstrap bootstrap = new Bootstrap();
         ChannelFuture channelFuture = bootstrap
-                .group(group)
+                .group(GROUP)
                 .channel(NioSocketChannel.class)
                 .handler(new HttpPipelineInitializer(holder, sslContext, showRequest, showResponse))
                 .connect(address)
                 .syncUninterruptibly();
 
-        if (channelFuture.isSuccess())
+        if (channelFuture.isSuccess()) {
             logger.debug("{}, [{}] connect success", address, channelFuture.channel());
-        else {
+        } else {
             if (promise != null) {
                 promise.receive(channelFuture.cause(), CauseType.CONNECTION_CONNECT_FAILED);
             }

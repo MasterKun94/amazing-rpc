@@ -1,7 +1,8 @@
 package httpService.proxy;
 
 import httpService.connectors.Connector;
-import httpService.connectors.netty.*;
+import httpService.connectors.netty.Client;
+import httpService.connectors.netty.HttpResponseHandler;
 import httpService.exceptions.CauseType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -20,7 +21,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 
 public class ChannelHolderConnector implements Connector, ReleaseAble {
-    private AutoResetChannelPromise future;
+    private HttpResponseHandler handler;
     private Channel channel;
 
     private final int poolIndex;
@@ -53,59 +54,57 @@ public class ChannelHolderConnector implements Connector, ReleaseAble {
                     sslContext,
                     showRequest,
                     showResponse);
-            this.future = channel.pipeline().get(HttpResponseHandler.class).getFuture();
+            this.handler = channel.pipeline().get(HttpResponseHandler.class);
         }
     }
 
     @Override
     public <T> ResponseFuture<T> executeAsync(RequestArgs requestArgs, Decoder<T> decoder, ResponsePromise<T> promise) {
-        FullHttpRequest request = create(requestArgs, promise);
-        Channel channel = getChannel(promise);
+        FullHttpRequest request = createRequest(requestArgs, promise);
         if (promise.isDone()) {
             return null;
         }
-        assert channel != null;
-        channel.writeAndFlush(request);
-        future.addListener(future -> {
-            if (future.isDoneAndSuccess()) {
-                try {
-                    promise.receive(decoder.decode(future.getEntity()));
-                } catch (Exception e) {
-                    promise.receive(e, CauseType.RESPONSE_DECODE_FAILED);
-                }
-            } else {
-                promise.receive(future.getCause(), future.getCauseType());
-            }
-        });
+        handler.executeAsync(request)
+                .addListener(future -> {
+                    if (future.isDoneAndSuccess()) {
+                        try {
+                            promise.receive(decoder.decode(future.getEntity()));
+                        } catch (Exception e) {
+                            promise.receive(e, CauseType.RESPONSE_DECODE_FAILED);
+                        }
+                    } else {
+                        promise.receive(future.getCause(), future.getCauseType());
+                    }
+                });
         return promise;
     }
 
     @Override
     public void release() {
-        PoolManager.release(defaultArgs.getAddress().toString(), this);
-    }
-
-    @Override
-    public int getIndex() {
-        return poolIndex;
+        PoolManager.release(defaultArgs.getAddress(), this.poolIndex);
     }
 
     @Override
     public ResponseFuture<Void> close() {
         ResponsePromise<Void> responsePromise = new ClientResponsePromise<>();
+        responsePromise.addListener(future -> {
+            if (future.isDoneAndSuccess()) {
+                logger.warn("Channel close success, channel holder: [{}]", this);
+            } else {
+                logger.error("Channel close fail, channel holder: [{}]", this);
+                throw new RuntimeException(future.getCause());
+            }
+        });
         channel.close().addListener(future -> {
+
             if (future.isSuccess()) {
                 responsePromise.receive(null);
             } else {
                 responsePromise.receive(future.cause(), CauseType.DEFAULT);
             }
         });
-        return responsePromise;
-    }
 
-    @Override
-    public String toString() {
-        return super.toString();
+        return responsePromise;
     }
 
     private Channel getChannel(ResponsePromise promise) {
@@ -114,12 +113,12 @@ public class ChannelHolderConnector implements Connector, ReleaseAble {
             if (promise.isDone()) {
                 return null;
             }
-            this.future = channel.pipeline().get(HttpResponseHandler.class).getFuture();
+            this.handler = channel.pipeline().get(HttpResponseHandler.class);
         }
         return channel;
     }
 
-    private FullHttpRequest create(RequestArgs requestArgs, ResponsePromise promise) {
+    private FullHttpRequest createRequest(RequestArgs requestArgs, ResponsePromise promise) {
         if (promise.isDone()) {
             return null;
         }
@@ -191,5 +190,10 @@ public class ChannelHolderConnector implements Connector, ReleaseAble {
         httpHeaders.set("Host", address.getHostString() + ":" + address.getPort());
         httpHeaders.set("Content-Length", byteBuf.writerIndex());
         httpHeaders.add("Content-Type", charset);
+    }
+
+    @Override
+    public String toString() {
+        return "ChannelHolderConnector(channel=" + this.channel + ", poolIndex=" + this.poolIndex + ", showRequest=" + this.showRequest + ", showResponse=" + this.showResponse + ", defaultArgs=" + this.defaultArgs + ", sslContext=" + this.sslContext + ", charset=" + this.charset + ")";
     }
 }

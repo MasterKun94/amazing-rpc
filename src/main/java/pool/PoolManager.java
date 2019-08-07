@@ -1,71 +1,58 @@
 package pool;
 
 import httpService.connectors.Connector;
-import httpService.proxy.ReleaseAble;
-import httpService.proxy.ResponseFuture;
+import httpService.exceptions.ChannelPoolException;
 import httpService.proxy.ResponsePromise;
 import httpService.exceptions.CauseType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
+import java.net.InetSocketAddress;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 public class PoolManager {
 
     private static final Logger logger = LoggerFactory.getLogger(PoolManager.class);
 
-    private static final Map<String, ChannelPool> POOL_PARTY = new HashMap<>();
+    private static final Map<InetSocketAddress, ChannelPool> POOL_PARTY = new ConcurrentHashMap<>();
 
-    public static Connector alloc(String host, ResponsePromise promise) {
+    public static Connector alloc(InetSocketAddress address, ResponsePromise promise) {
         if (promise.isDone()) {
             return null;
         }
-        ChannelPool pool = POOL_PARTY.get(host);
+        ChannelPool pool = POOL_PARTY.get(address);
         try {
-            int index = pool.getIndex();
-            Connector holder = pool.getElement(index);
+            Connector holder = pool.get();
             logger.debug("Channel holder pull success, target pool: [{}], " +
                     "channel holder: [{}]", pool, holder);
             return holder;
         } catch (Exception e) {
             logger.warn("Channel holder pull failed, exception is: {}, message: {}, " +
                     "target pool: [{}]", e.getClass(), e.getMessage(), pool);
-            promise.receive(e, CauseType.CHANNELPOOL_PULL_FAILED);
+            promise.receive(new ChannelPoolException.PullTimeout(e), CauseType.CHANNELPOOL_PULL_FAILED);
             return null;
         }
     }
 
-    public static void release(String host, ReleaseAble holder) {
-        logger.debug("Channel holder releasing: [{}]", holder);
+    public static void release(InetSocketAddress address, int index) {
+        logger.debug("Channel holder releasing: [{}, {}]", address, index);
         int i;
         do {
-            i = holder == null ? -1 : POOL_PARTY.get(host).release(holder.getIndex());
+            i = index == -1 ? -1 : POOL_PARTY.get(address).release(index);
         } while (i > 0);
         logger.debug("Channel holder release success");
     }
 
-    public static void close(ReleaseAble holder) {
-        ResponseFuture<Void> channelFuture = holder.close();
-        channelFuture.addListener(future -> {
-            if (future.isDoneAndSuccess()) {
-                logger.warn("Channel close success, channel holder: [{}]", holder);
-            } else {
-                logger.error("Channel close fail, channel holder: [{}]", holder);
-                throw new RuntimeException(future.getCause());
-            }
-        });
+    public static boolean exist(InetSocketAddress address) {
+        return POOL_PARTY.containsKey(address);
     }
 
-    public static boolean exist(String host) {
-        return POOL_PARTY.containsKey(host);
-    }
-
-    public static synchronized void register(String host, Supplier<ChannelPool> pool) {
-        if (exist(host)) {
+    public static synchronized void subscribe(InetSocketAddress address, Supplier<ChannelPool> pool) {
+        if (exist(address)) {
             return;
         }
-        POOL_PARTY.put(host, pool.get());
+        POOL_PARTY.put(address, pool.get());
     }
 }

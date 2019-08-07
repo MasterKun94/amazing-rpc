@@ -97,7 +97,7 @@ public class ConnectorBuilder {
                     i++;
                 }
 
-                if (!PoolManager.exist(socketAddress.toString())) {
+                if (!PoolManager.exist(socketAddress)) {
                     Supplier<ChannelPool> pool = () -> new ChannelPool(
                             socketAddress,
                             capacity,
@@ -108,7 +108,7 @@ public class ConnectorBuilder {
                             showRequest,
                             showResponse
                     );
-                    PoolManager.register(socketAddress.toString(), pool);
+                    PoolManager.subscribe(socketAddress, pool);
                 }
             }
             Connector connector = new NettyConnector();

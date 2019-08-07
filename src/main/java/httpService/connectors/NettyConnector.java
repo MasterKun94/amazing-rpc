@@ -14,12 +14,11 @@ public class NettyConnector implements Connector {
 
     @Override
     public <T> ResponseFuture<T> executeAsync(RequestArgs requestArgs, Decoder<T> decoder, ResponsePromise<T> promise) {
-        String address = requestArgs.getAddress().toString();
-        Connector holder = PoolManager.alloc(address, promise);
+        Connector connector = PoolManager.alloc(requestArgs.getAddress(), promise);
         if (promise.isDone()){
             return promise;
-        } else if (holder != null) {
-            return holder.executeAsync(requestArgs, decoder, promise);
+        } else if (connector != null) {
+            return connector.executeAsync(requestArgs, decoder, promise);
         } else {
             throw new UnexpectedException(this.toString());
         }
