@@ -50,9 +50,6 @@ public class PoolManager {
     }
 
     public static synchronized void subscribe(InetSocketAddress address, Supplier<ChannelPool> pool) {
-        if (exist(address)) {
-            return;
-        }
-        POOL_PARTY.put(address, pool.get());
+        POOL_PARTY.computeIfAbsent(address, k -> POOL_PARTY.put(k, pool.get()));
     }
 }
