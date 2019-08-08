@@ -4,13 +4,11 @@ import httpService.exceptions.CauseType;
 import httpService.exceptions.UnexpectedException;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 public class AutoResetChannelPromise extends ClientResponsePromise<String> {
 
     private final ReleaseAble holder;
-    private final AtomicBoolean inUse = new AtomicBoolean(false);
 
     public AutoResetChannelPromise(ReleaseAble holder) {
         this.holder = holder;

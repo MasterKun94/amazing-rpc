@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
 public class ClientResponsePromise<T> implements ResponsePromise<T> {
@@ -16,7 +17,7 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
     private volatile Throwable cause;
     private volatile CauseType causeType;
     private volatile boolean isSuccess;
-    private volatile Thread thread;
+    private volatile AtomicReference<Thread> thread;
     private final ConcurrentLinkedQueue<FutureListener<T>> listeners = new ConcurrentLinkedQueue<>();
 
     private AtomicBoolean isDone = new AtomicBoolean(false);
@@ -77,7 +78,7 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
 
     @Override
     public boolean whenSuccess(long timeout) {
-        this.thread = Thread.currentThread();
+        this.thread.set(Thread.currentThread());
 
         if (!isDone()) {
             LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(timeout));
@@ -164,7 +165,7 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
 
     @Override
     public T get() {
-        this.thread = Thread.currentThread();
+        this.thread.set(Thread.currentThread());
         if (!isDone()) {
             whenSuccess(TimeUnit.SECONDS.toNanos(20));
         }
@@ -195,7 +196,7 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
         while (!listeners.isEmpty()) {
             listeners.poll().listen(this);
         }
-        LockSupport.unpark(thread);
+        LockSupport.unpark(thread.get());
         return true;
     }
 }
