@@ -1,13 +1,13 @@
 package http;
 
 import httpService.annotation.*;
-import httpService.proxy.HttpMethod;
+import httpService.util.HttpMethod;
 
 import java.util.List;
 import java.util.TreeMap;
 import java.util.concurrent.Future;
 
-@ServiceContext(host = "127.0.0.1:8080", path = "/message", showRequest = true, showResponse = true)
+@ServiceContext(host = "127.0.0.1:8080", contextPath = "/message", showRequest = true, showResponse = true)
 public interface HttpTest {
     Message getMessage();
 
@@ -15,6 +15,6 @@ public interface HttpTest {
 
     TreeMap<String, Message> putMessage(@RequestBody Message message, @RequestHeaders("head") String head);
 
-    @RequestMapping(value = "/message/{path}", method = HttpMethod.DELETE)
-    Future<String> deleteMessage(@RequestParam("message") String message, @PathVariable("path") String path);
+    @RequestMapping(value = "/message/{contextPath}", method = HttpMethod.DELETE)
+    Future<String> deleteMessage(@RequestParam("message") String message, @PathVariable("contextPath") String path);
 }

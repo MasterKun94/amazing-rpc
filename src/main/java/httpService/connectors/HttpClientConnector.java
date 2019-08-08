@@ -2,10 +2,10 @@ package httpService.connectors;
 
 import httpService.connectors.httpClient.HttpBuilder;
 import httpService.connectors.httpClient.HttpConnector;
-import httpService.proxy.RequestArgs;
-import httpService.proxy.Decoder;
-import httpService.proxy.ResponseFuture;
-import httpService.proxy.ResponsePromise;
+import httpService.util.RequestArgs;
+import httpService.util.Decoder;
+import httpService.util.ResponseFuture;
+import httpService.util.ResponsePromise;
 import org.apache.http.util.EntityUtils;
 
 import java.net.InetSocketAddress;

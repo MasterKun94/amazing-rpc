@@ -1,6 +1,6 @@
 package httpService.connectors.netty;
 
-import httpService.proxy.ResponsePromise;
+import httpService.util.ResponsePromise;
 import httpService.exceptions.CauseType;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -11,7 +11,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.SslContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import httpService.proxy.ReleaseAble;
+import httpService.util.ReleaseAble;
 
 import java.net.InetSocketAddress;
 

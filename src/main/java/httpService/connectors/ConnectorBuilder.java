@@ -1,13 +1,14 @@
 package httpService.connectors;
 
-import httpService.proxy.RequestArgs;
-import httpService.proxy.*;
+import httpService.util.RequestArgs;
+import httpService.util.*;
 import io.netty.handler.ssl.SslContext;
 import pool.PoolManager;
 import pool.ChannelPool;
 import pool.poolUtil.Box;
 
 import java.net.InetSocketAddress;
+//import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class ConnectorBuilder {
         private Map<String, String> headers = new HashMap<>();
         private BlockingQueue<Box> queue;
         private SslContext sslContext;
-        private List<MonitorInitializer> initializers;
+        private List<DecoratorInitializer> initializers;
 
         private NettyConnectorBuilder(List<InetSocketAddress> socketAddresses) {
             this.socketAddresses = socketAddresses;
@@ -81,7 +82,7 @@ public class ConnectorBuilder {
             return this;
         }
 
-        public NettyConnectorBuilder setMonitors(List<MonitorInitializer> inits) {
+        public NettyConnectorBuilder setMonitors(List<DecoratorInitializer> inits) {
             this.initializers = inits;
             return this;
         }
@@ -113,20 +114,21 @@ public class ConnectorBuilder {
             }
             Connector connector = new NettyConnector();
             if (initializers != null && !initializers.isEmpty()) {
-                for (MonitorInitializer initializer : initializers) {
+                for (DecoratorInitializer initializer : initializers) {
                     connector = decorateConnector(connector, initializer.init());
                 }
             }
+
             return connector;
         }
 
-        private static Connector decorateConnector(Connector connector, Monitor monitor) {
+        private static Connector decorateConnector(Connector connector, Decorator decorator) {
             return new Connector() {
                 @Override
                 public <T> ResponseFuture<T> executeAsync(RequestArgs args, Decoder<T> decoder, ResponsePromise<T> promise) {
-                    monitor.beforeSendRequest();
+                    decorator.beforeSendRequest();
                     return connector.executeAsync(args, decoder, promise)
-                            .addListener(monitor::afterReceiveResponse);
+                            .addListener(decorator::afterReceiveResponse);
                 }
             };
         }

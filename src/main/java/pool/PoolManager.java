@@ -1,9 +1,9 @@
 package pool;
 
 import httpService.connectors.Connector;
-import httpService.proxy.ReleaseAble;
-import httpService.proxy.ResponseFuture;
-import httpService.proxy.ResponsePromise;
+import httpService.util.ReleaseAble;
+import httpService.util.ResponseFuture;
+import httpService.util.ResponsePromise;
 import httpService.exceptions.CauseType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

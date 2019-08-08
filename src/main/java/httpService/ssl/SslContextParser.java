@@ -1,6 +1,6 @@
 package httpService.ssl;
 
-import httpService.annotation.SslConfig;
+import httpService.util.SslConfig;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 
@@ -15,49 +15,49 @@ public class SslContextParser {
     private static final String DEFAULT = "";
 
     public static SslContext get(SslConfig sslConfig) {
-        if (!sslConfig.enabled()) {
+        if (sslConfig == null) {
             return null;
         }
         try {
 
-            String keyStoreType = getKeyStoreType(sslConfig.keyStoreType());
-            File trustStoreFile = getFile(sslConfig.trustStoreLocation());
+            String keyStoreType = getKeyStoreType(sslConfig.getKeyStoreType());
+            File trustStoreFile = getFile(sslConfig.getTrustStoreLocation());
             TrustManagerFactory trmf;
             if (trustStoreFile == null) {
                 trmf = null;
             } else {
-                char[] trustStorePswd = getPassword(sslConfig.trustStorePassword());
+                char[] trustStorePswd = getPassword(sslConfig.getTrustStorePassword());
                 KeyStore trustStore = KeyStore.getInstance(keyStoreType);
                 trustStore.load(new FileInputStream(trustStoreFile), trustStorePswd);
                 trmf = TrustManagerFactory.getInstance("SunX509");
                 trmf.init(trustStore);
             }
 
-            File keyStoreFile = getFile(sslConfig.keyStoreLocation());
+            File keyStoreFile = getFile(sslConfig.getKeyStoreLocation());
             KeyManagerFactory kmf;
             if (keyStoreFile == null) {
                 kmf = null;
             } else {
-                char[] keyStorePswd = getPassword(sslConfig.keyStorePassword());
-                char[] keyPswd = getPassword(sslConfig.keyPassword());
+                char[] keyStorePswd = getPassword(sslConfig.getKeyStorePassword());
+                char[] keyPswd = getPassword(sslConfig.getKeyPassword());
                 KeyStore keyStore = KeyStore.getInstance(keyStoreType);
                 keyStore.load(new FileInputStream(keyStoreFile), keyStorePswd);
                 kmf = KeyManagerFactory.getInstance("SunX509");
                 kmf.init(keyStore, keyPswd);
             }
             return SslContextBuilder.forClient()
-                    .enableOcsp(sslConfig.enableOcsp())
-                    .sessionCacheSize(sslConfig.sessionCacheSize())
-                    .sessionTimeout(sslConfig.sessionTimeout())
+                    .enableOcsp(sslConfig.isEnableOcsp())
+                    .sessionCacheSize(sslConfig.getSessionCacheSize())
+                    .sessionTimeout(sslConfig.getSessionTimeout())
                     .trustManager(trmf)
                     .keyStoreType(keyStoreType)
                     .keyManager(kmf)
-                    .ciphers(sslConfig.ciphers().length == 0 ?
+                    .ciphers(sslConfig.getCiphers().length == 0 ?
                             null :
-                            Arrays.asList(sslConfig.ciphers()))
-                    .protocols(sslConfig.protocols().length == 0 ?
+                            Arrays.asList(sslConfig.getCiphers()))
+                    .protocols(sslConfig.getProtocols().length == 0 ?
                             null :
-                            sslConfig.protocols())
+                            sslConfig.getProtocols())
                     .build();
         } catch (Exception e) {
             throw new IllegalArgumentException("illegal ssl configuration");

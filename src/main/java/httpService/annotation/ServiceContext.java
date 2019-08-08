@@ -16,7 +16,7 @@ public @interface ServiceContext {
 
     String host();
 
-    String path() default "";
+    String contextPath() default "";
 
     long timeout() default 15000L;
 

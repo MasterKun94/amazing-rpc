@@ -1,7 +1,6 @@
 package http;
 
-import httpService.proxy.HttpProxyGenerator;
-import httpService.proxy.HttpProxyGeneratorImpl;
+import httpService.util.HttpProxyGenerator;
 
 public class Test2 {
     public static void main(String[] args) {

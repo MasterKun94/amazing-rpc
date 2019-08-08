@@ -1,10 +1,10 @@
 package httpService.connectors;
 
-import httpService.proxy.RequestArgs;
+import httpService.util.RequestArgs;
 import httpService.exceptions.UnexpectedException;
-import httpService.proxy.Decoder;
-import httpService.proxy.ResponseFuture;
-import httpService.proxy.ResponsePromise;
+import httpService.util.Decoder;
+import httpService.util.ResponseFuture;
+import httpService.util.ResponsePromise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pool.PoolManager;

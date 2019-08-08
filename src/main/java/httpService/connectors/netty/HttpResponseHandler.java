@@ -1,16 +1,15 @@
 package httpService.connectors.netty;
 
-import httpService.proxy.AutoResetChannelPromise;
+import httpService.util.AutoResetChannelPromise;
 import httpService.exceptions.CauseType;
 import httpService.exceptions.ServerException;
 import httpService.exceptions.UnexpectedException;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import httpService.proxy.ReleaseAble;
+import httpService.util.ReleaseAble;
 
 import java.nio.charset.Charset;
 

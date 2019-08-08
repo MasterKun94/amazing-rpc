@@ -1,6 +1,6 @@
 package http;
 
-import httpService.proxy.*;
+import httpService.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,10 +10,10 @@ public class Test {
 
     public static void main(String[] args) throws Exception {
         HttpTest httpTest = HttpProxyGenerator.start()
-                .addInterceptor(new MonitorInitializer() {
+                .addInterceptor(new DecoratorInitializer() {
                     @Override
-                    public Monitor init() {
-                        return new Monitor() {
+                    public Decorator init() {
+                        return new Decorator() {
                             private Logger logger = LoggerFactory.getLogger(this.getClass());
 
                             @Override
@@ -28,10 +28,10 @@ public class Test {
                         };
                     }
                 })
-                .addInterceptor(new MonitorInitializer() {
+                .addInterceptor(new DecoratorInitializer() {
                     @Override
-                    public Monitor init() {
-                        return new Monitor() {
+                    public Decorator init() {
+                        return new Decorator() {
                             private Logger logger = LoggerFactory.getLogger(this.getClass());
 
                             @Override

@@ -1,6 +1,6 @@
 package httpService.annotation;
 
-import httpService.proxy.HttpMethod;
+import httpService.util.HttpMethod;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

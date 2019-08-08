@@ -1,7 +1,7 @@
 package pool;
 
-import httpService.proxy.ChannelHolderConnector;
-import httpService.proxy.DefaultArgs;
+import httpService.util.ChannelHolderConnector;
+import httpService.util.DefaultArgs;
 import httpService.connectors.Connector;
 import io.netty.handler.ssl.SslContext;
 import pool.poolUtil.*;
