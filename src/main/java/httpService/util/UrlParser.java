@@ -32,8 +32,9 @@ public class UrlParser {
         }
         StringBuilder urlBuilder = new StringBuilder();
         for (String s : parseUrl) {
-            if (s != null && !s.equals(""))
+            if (s != null && !"".equals(s)) {
                 urlBuilder.append("/").append(s);
+            }
         }
         return urlBuilder;
     }

@@ -4,6 +4,7 @@ import httpService.exceptions.CauseType;
 import httpService.exceptions.UnexpectedException;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 public class AutoResetChannelPromise extends ClientResponsePromise<String> {
 
@@ -15,20 +16,22 @@ public class AutoResetChannelPromise extends ClientResponsePromise<String> {
 
     @Override
     public boolean receive(String entity) {
-        super.receive(entity);
-        return reset();
+        return doReceive(() -> super.receive(entity));
     }
 
     @Override
     public boolean receive(Throwable cause, CauseType type) {
-        super.receive(cause, type);
-        return reset();
+        return doReceive(() -> super.receive(cause, type));
     }
 
     @Override
     public boolean receive(String entity, Throwable cause, CauseType type) {
-        super.receive(entity, cause, type);
-        return reset();
+        return doReceive(() -> super.receive(entity, cause, type));
+    }
+
+    private boolean doReceive(Supplier<Boolean> supplier) {
+            supplier.get();
+            return reset();
     }
 
     @Override
