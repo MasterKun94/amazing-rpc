@@ -1,6 +1,6 @@
 package pool;
 
-import httpService.connectors.Connector;
+import httpService.connection.RpcExecutor;
 import httpService.exceptions.CauseType;
 import httpService.exceptions.ChannelPoolException;
 import httpService.util.ResponsePromise;
@@ -18,13 +18,13 @@ public class PoolManager {
 
     private static final Map<InetSocketAddress, ChannelPool> POOL_PARTY = new ConcurrentHashMap<>();
 
-    public static Connector alloc(InetSocketAddress address, ResponsePromise promise) {
+    public static RpcExecutor alloc(InetSocketAddress address, ResponsePromise promise) {
         if (promise.isDone()) {
             return null;
         }
         ChannelPool pool = POOL_PARTY.get(address);
         try {
-            Connector holder = pool.get();
+            RpcExecutor holder = pool.get();
             logger.debug("Channel holder pull success, target pool: [{}], " +
                     "channel holder: [{}]", pool, holder);
             return holder;

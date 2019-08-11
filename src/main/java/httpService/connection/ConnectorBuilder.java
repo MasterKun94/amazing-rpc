@@ -1,4 +1,4 @@
-package httpService.connectors;
+package httpService.connection;
 
 import httpService.util.RequestArgs;
 import httpService.util.*;
@@ -16,7 +16,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.function.Supplier;
 
 public class ConnectorBuilder {
-    private Supplier<Connector> supplier;
+    private Supplier<RpcExecutor> supplier;
 
     public static NettyConnectorBuilder createNetty(List<InetSocketAddress> address) {
         return new NettyConnectorBuilder(address);
@@ -24,11 +24,11 @@ public class ConnectorBuilder {
 
     public static ConnectorBuilder createHttpClient() {
         ConnectorBuilder builder = new ConnectorBuilder();
-        builder.supplier = HttpClientConnector::new;
+        builder.supplier = HttpClientExec::new;
         return builder;
     }
 
-    public Connector build() {
+    public RpcExecutor build() {
         return supplier.get();
     }
 
@@ -88,7 +88,7 @@ public class ConnectorBuilder {
         }
 
         @Override
-        public Connector build() {
+        public RpcExecutor build() {
             for (InetSocketAddress socketAddress : this.socketAddresses) {
                 String[][] defaultHeaders = new String[headers.size()][2];
                 int i = 0;
@@ -112,22 +112,22 @@ public class ConnectorBuilder {
                     PoolManager.subscribe(socketAddress, pool);
                 }
             }
-            Connector connector = new NettyConnector();
+            RpcExecutor rpcExecutor = new NettyExec();
             if (initializers != null && !initializers.isEmpty()) {
                 for (DecoratorInitializer initializer : initializers) {
-                    connector = decorateConnector(connector, initializer.init());
+                    rpcExecutor = decorateConnector(rpcExecutor, initializer.init());
                 }
             }
 
-            return connector;
+            return rpcExecutor;
         }
 
-        private static Connector decorateConnector(Connector connector, Decorator decorator) {
-            return new Connector() {
+        private static RpcExecutor decorateConnector(RpcExecutor rpcExecutor, Decorator decorator) {
+            return new RpcExecutor() {
                 @Override
                 public <T> ResponseFuture<T> executeAsync(RequestArgs args, Decoder<T> decoder, ResponsePromise<T> promise) {
                     decorator.beforeSendRequest();
-                    return connector.executeAsync(args, decoder, promise)
+                    return rpcExecutor.executeAsync(args, decoder, promise)
                             .addListener(decorator::afterReceiveResponse);
                 }
             };

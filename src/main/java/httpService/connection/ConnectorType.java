@@ -1,4 +1,4 @@
-package httpService.connectors;
+package httpService.connection;
 
 public enum  ConnectorType {
     NETTY,

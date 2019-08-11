@@ -2,7 +2,7 @@ package httpService.util;
 
 import com.alibaba.fastjson.JSON;
 import httpService.annotation.*;
-import httpService.connectors.*;
+import httpService.connection.*;
 import httpService.exceptions.BadRequestException;
 import httpService.exceptions.CauseType;
 import org.slf4j.Logger;
@@ -17,10 +17,10 @@ import java.util.function.Function;
 
 import static httpService.util.AliasUtil.parse;
 
-class Methods<T> {
+public class Methods<T> {
     private Method method;
     private Decoder<T> decoder;
-    private Connector connector;
+    private RpcExecutor rpcExecutor;
     private ServiceConfig config;
     private LoadBalancer balancer;
 
@@ -42,14 +42,14 @@ class Methods<T> {
         return this;
     }
 
-    Methods setConnector(Connector connector) {
-        this.connector = connector;
+    Methods setRpcExecutor(RpcExecutor rpcExecutor) {
+        this.rpcExecutor = rpcExecutor;
         return this;
     }
 
     ProxyMethod build() {
         Encoder encoder = encode(method, config.getContextPath(), balancer);
-        ArgsToPromise<T> argsToPromise = argsToPromise(encoder, connector, decoder);
+        ArgsToPromise<T> argsToPromise = argsToPromise(encoder, rpcExecutor, decoder);
         return asyncProxyMethod(argsToPromise, config.getTimeout(), method);
     }
 
@@ -197,16 +197,16 @@ class Methods<T> {
             requestArgs.setAddress(balancer);
             requestArgs.setMethod(httpMethod);
             requestArgs.setPath(pathFunction.apply(args, promise));
-            requestArgs.setParam(paramsFunc.apply(args, promise));
+            requestArgs.setParams(paramsFunc.apply(args, promise));
             requestArgs.setHeaders(headersFunc.apply(args, promise));
             return requestArgs;
         };
     }
 
     @SuppressWarnings("unchecked")
-    private static Decoder decode(Method method) throws ClassNotFoundException {
-        Class returnClass = method.getReturnType();
+    public static Decoder decode(Method method) throws ClassNotFoundException {//TODO
         Type genReturnType = method.getGenericReturnType();
+        Class returnClass = getClassByType(genReturnType);
         if (isFinalOrOptional(returnClass)) {
             genReturnType = getTypeArgument(genReturnType);
             returnClass = getClassByType(genReturnType);
@@ -293,7 +293,7 @@ class Methods<T> {
 
     private static <T> ArgsToPromise<T> argsToPromise(
             Encoder encoder,
-            Connector connector,
+            RpcExecutor rpcExecutor,
             Decoder<T> decoder) {
 
         return (args) -> {
@@ -301,7 +301,7 @@ class Methods<T> {
             RequestArgs requestArgs = encoder.encode(args, promise);
             return promise.isDone() ?
                     promise :
-                    connector.executeAsync(requestArgs, decoder, promise);
+                    rpcExecutor.executeAsync(requestArgs, decoder, promise);
         };
     }
 

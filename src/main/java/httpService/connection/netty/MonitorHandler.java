@@ -1,4 +1,4 @@
-package httpService.connectors.netty;
+package httpService.connection.netty;
 
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;

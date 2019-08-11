@@ -1,4 +1,4 @@
-package httpService.connectors.netty;
+package httpService.connection.netty;
 
 import httpService.util.AutoResetChannelPromise;
 import httpService.util.ReleaseAble;
@@ -51,6 +51,6 @@ public class HttpPipelineInitializer extends ChannelInitializer<Channel> {
         int maxContentLength = 10 * 1024 * 1024;
         pipeline.addLast(new HttpClientCodec())
                 .addLast(new HttpObjectAggregator(maxContentLength))
-                .addLast(new RPCHandler(charset, promise));
+                .addLast(new ExecutionHandler(charset, promise));
     }
 }

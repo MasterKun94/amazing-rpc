@@ -1,9 +1,10 @@
 package httpService.util;
 
 import httpService.annotation.ServiceContext;
-import httpService.connectors.Connector;
-import httpService.connectors.ConnectorBuilder;
-import httpService.connectors.ConnectorType;
+import httpService.connection.RpcClient;
+import httpService.connection.RpcExecutor;
+import httpService.connection.ConnectorBuilder;
+import httpService.connection.ConnectorType;
 import httpService.ssl.SslContextParser;
 
 import java.lang.reflect.Method;
@@ -22,35 +23,6 @@ public class HttpProxyGeneratorImpl implements HttpProxyGenerator {
     private List<DecoratorInitializer> monitorInits = new ArrayList<>();
     private ServiceConfig config;
     private LoadBalancerInitializer balancerInit;
-
-    HttpProxyGeneratorImpl() { }
-
-    public <T> T getProxy(Class<T> clazz) {
-        parsers.add(new DefaultServiceParser());
-        config = setDefaultIfAbsent(clazz);
-        balancerInit = setDefaultIfAbsent();
-        List<InetSocketAddress> socketAddresses = parseAddress(config, parsers);
-        LoadBalancer balancer = balancerInit.init(socketAddresses);
-        Connector connector = getConnector(config, socketAddresses, monitorInits);
-        Map<Method, ProxyMethod> methodMap = new HashMap<>();
-        try {
-            for (Method method : clazz.getMethods()) {
-                ProxyMethod proxyMethod = Methods.of(method)
-                        .setBalancer(balancer)
-                        .setConfig(config)
-                        .setConnector(connector)
-                        .build();
-                methodMap.put(method, proxyMethod);
-            }
-        } catch (ClassNotFoundException e) {
-            throw new IllegalArgumentException(e);
-        }
-
-        return (T) Proxy.newProxyInstance(
-                clazz.getClassLoader(),
-                new Class[]{clazz},
-                (proxy, method, args) -> methodMap.get(method).apply(args));
-    }
 
     @Override
     public HttpProxyGenerator addServiceParser(ServiceParser parser) {
@@ -74,6 +46,38 @@ public class HttpProxyGeneratorImpl implements HttpProxyGenerator {
     public HttpProxyGenerator setLoadBalancer(LoadBalancerInitializer initializer) {
         this.balancerInit = initializer;
         return this;
+    }
+
+    @Override
+    public RpcClient getClient() {
+        return null;
+    }
+
+    public <T> T getProxy(Class<T> clazz) {
+        parsers.add(new DefaultServiceParser());
+        config = setDefaultIfAbsent(clazz);
+        balancerInit = setDefaultIfAbsent();
+        List<InetSocketAddress> socketAddresses = parseAddress(config, parsers);
+        LoadBalancer balancer = balancerInit.init(socketAddresses);
+        RpcExecutor rpcExecutor = getExec(config, socketAddresses, monitorInits);
+        Map<Method, ProxyMethod> methodMap = new HashMap<>();
+        try {
+            for (Method method : clazz.getMethods()) {
+                ProxyMethod proxyMethod = Methods.of(method)
+                        .setBalancer(balancer)
+                        .setConfig(config)
+                        .setRpcExecutor(rpcExecutor)
+                        .build();
+                methodMap.put(method, proxyMethod);
+            }
+        } catch (ClassNotFoundException e) {
+            throw new IllegalArgumentException(e);
+        }
+
+        return (T) Proxy.newProxyInstance(
+                clazz.getClassLoader(),
+                new Class[]{clazz},
+                (proxy, method, args) -> methodMap.get(method).apply(args));
     }
 
     private <T> ServiceConfig setDefaultIfAbsent(Class<T> clazz) {
@@ -111,7 +115,7 @@ public class HttpProxyGeneratorImpl implements HttpProxyGenerator {
     }
 
 
-    private static Connector getConnector(ServiceConfig config,
+    private static RpcExecutor getExec(ServiceConfig config,
                                        List<InetSocketAddress> addresses,
                                        List<DecoratorInitializer> initializers) {
 

@@ -1,5 +1,7 @@
 package httpService.util;
 
+import httpService.connection.RpcClient;
+
 public interface HttpProxyGenerator {
 
     static HttpProxyGenerator start() {
@@ -13,6 +15,8 @@ public interface HttpProxyGenerator {
     HttpProxyGenerator setConfig(ServiceConfig config);
 
     HttpProxyGenerator setLoadBalancer(LoadBalancerInitializer initializer);
+
+    RpcClient getClient();
 
     <T> T getProxy(Class<T> clazz);
 }

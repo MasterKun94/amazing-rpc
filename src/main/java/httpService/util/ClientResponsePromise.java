@@ -11,6 +11,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+import java.util.function.Supplier;
 
 public class ClientResponsePromise<T> implements ResponsePromise<T> {
     private volatile T entity;
@@ -22,11 +23,23 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
 
     private AtomicBoolean isDone = new AtomicBoolean(false);
 
+    public ClientResponsePromise() {}
+
+    public ClientResponsePromise(Supplier<T> supplier) {
+        Thread thread = new Thread(() -> {
+            try {
+                this.receive(supplier.get());
+            } catch (Throwable throwable) {
+                this.receive(throwable, CauseType.DEFAULT);
+            }
+        });
+    }
+
     @Override
     public boolean receive(T entity) {
         this.entity = entity;
         this.isSuccess = true;
-        return receive();
+        return doReceive();
     }
 
     @Override
@@ -34,7 +47,7 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
         this.cause = cause;
         this.causeType = type;
         this.isSuccess = false;
-        return receive();
+        return doReceive();
     }
 
     @Override
@@ -43,7 +56,7 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
         this.cause = cause;
         this.causeType = type;
         this.isSuccess = false;
-        return receive();
+        return doReceive();
     }
 
     @Override
@@ -170,7 +183,7 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
         return this.isDone.compareAndSet(true, false);
     }
 
-    private boolean receive() {
+    private boolean doReceive() {
         if (!this.isDone.compareAndSet(false, true)) {
             return false;
         }

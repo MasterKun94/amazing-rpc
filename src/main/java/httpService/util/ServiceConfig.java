@@ -2,7 +2,7 @@ package httpService.util;
 
 import httpService.annotation.RequestHeaders;
 import httpService.annotation.ServiceContext;
-import httpService.connectors.ConnectorType;
+import httpService.connection.ConnectorType;
 
 import java.util.HashMap;
 import java.util.Map;

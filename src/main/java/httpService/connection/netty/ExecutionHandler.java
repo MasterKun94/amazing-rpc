@@ -1,4 +1,4 @@
-package httpService.connectors.netty;
+package httpService.connection.netty;
 
 import httpService.exceptions.CauseType;
 import httpService.exceptions.ServerException;
@@ -15,13 +15,13 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
 
-public class RPCHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
+public class ExecutionHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
     private final AutoResetChannelPromise promise;
     private final Charset charset;
     private ChannelPipeline pipeline;
-    private static final Logger logger = LoggerFactory.getLogger(RPCHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(ExecutionHandler.class);
 
-    public RPCHandler(Charset charset, AutoResetChannelPromise promise) {
+    public ExecutionHandler(Charset charset, AutoResetChannelPromise promise) {
         this.charset = charset;
         this.promise = promise;
     }

@@ -1,16 +1,16 @@
 package pool;
 
-import httpService.util.ChannelHolderConnector;
+import httpService.util.ChannelHolderExec;
 import httpService.util.DefaultArgs;
-import httpService.connectors.Connector;
+import httpService.connection.RpcExecutor;
 import io.netty.handler.ssl.SslContext;
 import pool.poolUtil.*;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.BlockingQueue;
 
-public class ChannelPool implements BlockingPool<Connector> {
-    private final BlockingPool<Connector> pool;
+public class ChannelPool implements BlockingPool<RpcExecutor> {
+    private final BlockingPool<RpcExecutor> pool;
 
     public ChannelPool(
             InetSocketAddress address,
@@ -22,14 +22,14 @@ public class ChannelPool implements BlockingPool<Connector> {
             boolean showReq,
             boolean showRes) {
         DefaultArgs args = new DefaultArgs(address, defaultHeaders);
-        IndexElementInitializer<Connector> init = (index) ->
-            new ChannelHolderConnector(args, sslContext, lazy, showReq, showRes, index);
+        IndexElementInitializer<RpcExecutor> init = (index) ->
+            new ChannelHolderExec(args, sslContext, lazy, showReq, showRes, index);
 
         pool = Pools.immutableBlockingPool(capacity, init, queue);
     }
 
     @Override
-    public Connector get() throws InterruptedException {
+    public RpcExecutor get() throws InterruptedException {
         return pool.get();
     }
 
@@ -44,7 +44,7 @@ public class ChannelPool implements BlockingPool<Connector> {
     }
 
     @Override
-    public Connector borrow() {
+    public RpcExecutor borrow() {
         return pool.borrow();
     }
 
@@ -54,12 +54,12 @@ public class ChannelPool implements BlockingPool<Connector> {
     }
 
     @Override
-    public Connector request() {
+    public RpcExecutor request() {
         return pool.request();
     }
 
     @Override
-    public int addReference(Connector channel) {
+    public int addReference(RpcExecutor channel) {
         return pool.addReference(channel);
     }
 
@@ -69,7 +69,7 @@ public class ChannelPool implements BlockingPool<Connector> {
     }
 
     @Override
-    public int release(Connector channel) {
+    public int release(RpcExecutor channel) {
         return pool.release(channel);
     }
 
@@ -79,7 +79,7 @@ public class ChannelPool implements BlockingPool<Connector> {
     }
 
     @Override
-    public int getCounter(Connector channel) {
+    public int getCounter(RpcExecutor channel) {
         return pool.getCounter(channel);
     }
 
@@ -89,12 +89,12 @@ public class ChannelPool implements BlockingPool<Connector> {
     }
 
     @Override
-    public int getPointer(Connector channel) {
+    public int getPointer(RpcExecutor channel) {
         return pool.getPointer(channel);
     }
 
     @Override
-    public Connector getElement(int pointer) {
+    public RpcExecutor getElement(int pointer) {
         return pool.getElement(pointer);
     }
 

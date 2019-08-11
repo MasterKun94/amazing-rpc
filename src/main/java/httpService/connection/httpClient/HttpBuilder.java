@@ -1,4 +1,4 @@
-package httpService.connectors.httpClient;
+package httpService.connection.httpClient;
 
 import org.apache.commons.codec.Charsets;
 import org.apache.http.client.methods.*;
@@ -7,7 +7,6 @@ import org.apache.http.util.EntityUtils;
 
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Function;

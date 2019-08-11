@@ -1,7 +1,6 @@
-package httpService.connectors.netty;
+package httpService.connection.netty;
 
 import io.netty.channel.*;
-import io.netty.handler.codec.http.FullHttpRequest;
 
 import java.net.SocketAddress;
 

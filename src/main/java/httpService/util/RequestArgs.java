@@ -40,9 +40,9 @@ public class RequestArgs {
         this.address = balancer.select();
     }
 
-    public void setAddress(InetSocketAddress address) {
-        this.address = address;
-    }
+//    public void setAddress(InetSocketAddress address) {
+//        this.address = address;
+//    }
 
     public void setPath(StringBuilder path) {
         this.path = path;
@@ -52,7 +52,7 @@ public class RequestArgs {
         this.method = method;
     }
 
-    public void setParam(String[][] param) {
+    public void setParams(String[][] param) {
         this.param = param;
     }
 

@@ -1,4 +1,4 @@
-package httpService.connectors.netty;
+package httpService.connection.netty;
 
 import httpService.util.ReleaseAble;
 import io.netty.bootstrap.Bootstrap;

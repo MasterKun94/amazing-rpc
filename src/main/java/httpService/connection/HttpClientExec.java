@@ -1,18 +1,19 @@
-package httpService.connectors;
+package httpService.connection;
 
-import httpService.connectors.httpClient.HttpBuilder;
-import httpService.connectors.httpClient.HttpConnector;
-import httpService.util.RequestArgs;
-import httpService.util.Decoder;
-import httpService.util.ResponseFuture;
-import httpService.util.ResponsePromise;
+import httpService.connection.httpClient.HttpBuilder;
+import httpService.connection.httpClient.HttpConnector;
+import httpService.exceptions.CauseType;
+import httpService.util.*;
 import org.apache.http.util.EntityUtils;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
-public class HttpClientConnector implements Connector {
+public class HttpClientExec implements RpcExecutor {
+    private Executor executor = Executors.newFixedThreadPool(20);
 
-    public <T> T execute(RequestArgs requestArgs, Decoder<T> decoder, ResponsePromise<T> promise) throws Exception {
+    public <T> void doExecute(RequestArgs requestArgs, Decoder<T> decoder, ResponsePromise<T> promise) {
         InetSocketAddress socketAddress = requestArgs.getAddress();
 
         String url = "http://" +
@@ -53,11 +54,16 @@ public class HttpClientConnector implements Connector {
                 .execute(HttpConnector
                         .of((req, res) -> EntityUtils.toString(res.getEntity())))
                 .sync();
-        return decoder.decode(response);
+        try {
+            promise.receive(decoder.decode(response));
+        } catch (Exception e) {
+            promise.receive(e, CauseType.DEFAULT);
+        }
     }
 
     @Override
     public <T> ResponseFuture<T> executeAsync(RequestArgs requestArgs, Decoder<T> decoder, ResponsePromise<T> promise) {
-        return null;//TODO
+        executor.execute(() -> doExecute(requestArgs, decoder, promise));
+        return promise;
     }
 }
