@@ -53,13 +53,14 @@ public class HttpProxyGeneratorImpl implements HttpProxyGenerator {
         return null;
     }
 
-    public <T> T getProxy(Class<T> clazz) {
+    public <T> T getProxy(Class<T> clazz, T fallBackObject) {
         parsers.add(new DefaultServiceParser());
         config = setDefaultIfAbsent(clazz);
         balancerInit = setDefaultIfAbsent();
         List<InetSocketAddress> socketAddresses = parseAddress(config, parsers);
         LoadBalancer balancer = balancerInit.init(socketAddresses);
         RpcExecutor rpcExecutor = getExec(config, socketAddresses, monitorInits);
+
         Map<Method, ProxyMethod> methodMap = new HashMap<>();
         try {
             for (Method method : clazz.getMethods()) {
@@ -67,6 +68,7 @@ public class HttpProxyGeneratorImpl implements HttpProxyGenerator {
                         .setBalancer(balancer)
                         .setConfig(config)
                         .setRpcExecutor(rpcExecutor)
+                        .setFallBack(fallBackObject)
                         .build();
                 methodMap.put(method, proxyMethod);
             }
@@ -78,6 +80,10 @@ public class HttpProxyGeneratorImpl implements HttpProxyGenerator {
                 clazz.getClassLoader(),
                 new Class[]{clazz},
                 (proxy, method, args) -> methodMap.get(method).apply(args));
+    }
+
+    public <T> T getProxy(Class<T> clazz) {
+        return getProxy(clazz, null);
     }
 
     private <T> ServiceConfig setDefaultIfAbsent(Class<T> clazz) {

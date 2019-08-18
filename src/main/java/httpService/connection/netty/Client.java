@@ -27,6 +27,7 @@ public class Client {
             Charset charset) {
 
         Bootstrap bootstrap = new Bootstrap();
+
         return bootstrap
                 .group(GROUP)
                 .channel(NioSocketChannel.class)

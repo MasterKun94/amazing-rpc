@@ -19,4 +19,6 @@ public interface HttpProxyGenerator {
     RpcClient getClient();
 
     <T> T getProxy(Class<T> clazz);
+
+    <T> T getProxy(Class<T> clazz, T fallBack);
 }

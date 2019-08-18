@@ -1,12 +1,23 @@
 package httpService.connection;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.TypeReference;
 import httpService.exceptions.CauseType;
-import httpService.util.*;
+import httpService.util.ClientResponsePromise;
+import httpService.util.Decoder;
+import httpService.util.HttpMethod;
+import httpService.util.LoadBalancer;
+import httpService.util.Methods;
+import httpService.util.RequestArgs;
+import httpService.util.ResponseFuture;
+import httpService.util.ResponsePromise;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.socket.nio.NioSocketChannel;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.RandomAccessFile;
+import java.lang.reflect.Type;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 
 public class RpcClient {
     private RpcExecutor executor;
@@ -17,95 +28,82 @@ public class RpcClient {
         this.loadBalancer = loadBalancer;
     }
 
-    public <T> RequestExecutor<T> get(String path) {
-        RequestExecutor executor = new RequestExecutor();
-        executor.method = HttpMethod.GET;
-        executor.path = path;
-        return executor;
+    public <T> RequestExecutor<T> createExecutor(HttpMethod method, String path, TypeReference<T> returnType) {
+        return new RequestExecutor<>(method, path, returnType.getType());
+
     }
 
-    public <T> RequestExecutor<T> post(String path) {
-        RequestExecutor executor = new RequestExecutor();
-        executor.method = HttpMethod.POST;
-        executor.path = path;
-        return executor;
+    public <T> RequestExecutor<T> get(String path, TypeReference<T> returnType) {
+        return new RequestExecutor<>(HttpMethod.GET, path, returnType.getType());
+
     }
 
-    public <T> RequestExecutor<T> put(String path) {
-        RequestExecutor executor = new RequestExecutor();
-        executor.method = HttpMethod.PUT;
-        executor.path = path;
-        return executor;
+    public <T> RequestExecutor<T> post(String path, TypeReference<T> returnType) {
+        return new RequestExecutor<>(HttpMethod.POST, path, returnType.getType());
+
     }
 
-    public <T> RequestExecutor<T> delete(String path) {
-        RequestExecutor executor = new RequestExecutor();
-        executor.method = HttpMethod.DELETE;
-        executor.path = path;
-        return executor;
+    public <T> RequestExecutor<T> put(String path, TypeReference<T> returnType) {
+        return new RequestExecutor<>(HttpMethod.PUT, path, returnType.getType());
+
     }
 
-    public class RequestExecutor<T> {//TODO
+    public <T> RequestExecutor<T> delete(String path, TypeReference<T> returnType) {
+        return new RequestExecutor<>(HttpMethod.DELETE, path, returnType.getType());
+    }
+
+    public class RequestExecutor<T> {
         private volatile Decoder<T> decoder;
-        private String path;
         private HttpMethod method;
-        private List<String[]> headers = new ArrayList<>(5);
-        private List<String[]> params = new ArrayList<>(5);
-        private Object body;
+        private String path;
+        private Type type;
 
-        public RequestExecutor setBody(Object body) {
-            this.body = body;
-            return this;
-        }
-
-        public RequestExecutor setParam(String name, String value) {
-            params.add(new String[]{name, value});
-            return this;
-        }
-
-        public RequestExecutor setHeaders(String name, String value) {
-            headers.add(new String[]{name, value});
-            return this;
-        }
-
-        public ResponseFuture<T> execute() {
-            if (decoder == null) {
-                try {
-                    synchronized (this) {
-                        if (decoder == null) {
-                            Method method = this.getClass().getMethod("execute");
-                            decoder = Methods.decode(method);
-                        }
-                    }
-                } catch (Exception e) {
-                    ResponsePromise<T> promise = new ClientResponsePromise<>();
-                    promise.receive(e, CauseType.DEFAULT);
-                    return promise;
-                }
+        public RequestExecutor(HttpMethod method, String path, Type type) {
+            this.method = method;
+            this.path = path;
+            this.type = type;
+            try {
+                this.decoder = Methods.decode(type);
+            } catch (Exception e) {
+                throw new IllegalArgumentException(e);
             }
-            return execute(decoder);
         }
 
-        public ResponseFuture<T> execute(Decoder<T> decoder) {
+        public ResponseFuture<T> execute(String[][] params, String[][] headers, Object body) {//TODO
             RequestArgs requestArgs = new RequestArgs();
             requestArgs.setAddress(loadBalancer);
             requestArgs.setMethod(method);
             requestArgs.setEntity(JSON.toJSONString(body));
             requestArgs.setPath(new StringBuilder(path));
+            requestArgs.setHeaders(headers);
+            requestArgs.setParams(params);
 
-            if (this.headers != null) {
-                String[][] headers = new String[this.headers.size()][2];
-                this.headers.toArray(headers);
-                requestArgs.setHeaders(headers);
-            }
-            if (this.params != null) {
-                String[][] params = new String[this.params.size()][2];
-                this.params.toArray(params);
-                requestArgs.setParams(params);
-            }
-            ResponsePromise<T> promise = new ClientResponsePromise<>();
-
-            return executor.executeAsync(requestArgs, decoder, promise);//TODO
+            return execute(requestArgs);
         }
+
+        public ResponseFuture<T> execute(RequestArgs requestArgs) {
+            ResponsePromise<T> promise = new ClientResponsePromise<>();
+            return executor.executeAsync(requestArgs, decoder, promise);
+        }
+
+        public HttpMethod getMethod() {
+            return method;
+        }
+
+        public String getPath() {
+            return path;
+        }
+
+        public Type getReturnType() {
+            return type;
+        }
+
+        public LoadBalancer getLoadBalancer() {
+            return loadBalancer;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+
     }
 }

@@ -2,34 +2,42 @@ package httpService.util;
 
 import com.alibaba.fastjson.JSON;
 import httpService.annotation.*;
-import httpService.connection.*;
+import httpService.connection.RpcExecutor;
 import httpService.exceptions.BadRequestException;
 import httpService.exceptions.CauseType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import httpService.exceptions.UnexpectedException;
+import httpService.util.fallBack.FallBackInfo;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static httpService.util.AliasUtil.parse;
 
+@SuppressWarnings("unchecked")
 public class Methods<T> {
     private Method method;
     private Decoder<T> decoder;
     private RpcExecutor rpcExecutor;
     private ServiceConfig config;
     private LoadBalancer balancer;
+    private Object fallBackObject;
 
     static Methods of(Method method) throws ClassNotFoundException {
         Methods methods = new Methods();
         methods.method = method;
-        methods.decoder = decode(method);
+        methods.decoder = decode(method.getGenericReturnType());
 
         return methods;
+    }
+
+    Methods setFallBack(Object fallBack) {
+        this.fallBackObject = fallBack;
+        return this;
     }
 
     Methods setConfig(ServiceConfig config) {
@@ -52,8 +60,6 @@ public class Methods<T> {
         ArgsToPromise<T> argsToPromise = argsToPromise(encoder, rpcExecutor, decoder);
         return asyncProxyMethod(argsToPromise, config.getTimeout(), method);
     }
-
-    private static final Logger logger = LoggerFactory.getLogger(Methods.class);
 
     private static String[][] getArgsByIndex(
             Map<String, ? extends ConfigValue> paramIndices,
@@ -203,13 +209,11 @@ public class Methods<T> {
         };
     }
 
-    @SuppressWarnings("unchecked")
-    public static Decoder decode(Method method) throws ClassNotFoundException {//TODO
-        Type genReturnType = method.getGenericReturnType();
-        Class returnClass = getClassByType(genReturnType);
+    public static Decoder decode(Type returnType) throws ClassNotFoundException {//TODO
+        Class returnClass = getClassByType(returnType);
         if (isFinalOrOptional(returnClass)) {
-            genReturnType = getTypeArgument(genReturnType);
-            returnClass = getClassByType(genReturnType);
+            returnType = getTypeArgument(returnType);
+            returnClass = getClassByType(returnType);
         }
 
         final Class finalClass = returnClass;
@@ -234,9 +238,9 @@ public class Methods<T> {
 
         if (isAssignable(Collection.class, finalClass)) {
             Function<String, List> listFunction;
-            if (genReturnType instanceof ParameterizedType) {
-                ParameterizedType returnType = (ParameterizedType) genReturnType;
-                Type typeArg = returnType.getActualTypeArguments()[0];
+            if (returnType instanceof ParameterizedType) {
+                ParameterizedType parameterizedType = (ParameterizedType) returnType;
+                Type typeArg = parameterizedType.getActualTypeArguments()[0];
                 Class clazz = Class.forName(typeArg.getTypeName());
                 listFunction = res -> JSON.parseArray(res, clazz);
             } else {
@@ -267,27 +271,67 @@ public class Methods<T> {
         return res -> JSON.parseObject(res, finalClass);
     }
 
-    private static <T> ProxyMethod asyncProxyMethod(
+    private ProxyMethod asyncProxyMethod(
             ArgsToPromise<T> arg2Prms,
             long timeout,
             Method method) {
 
         Class returnType = method.getReturnType();
         ProxyMethod finalArg2Obj;
-        if (Future.class.isAssignableFrom(returnType)) {
+
+        if (ResponseFuture.class.isAssignableFrom(returnType)) {
             return arg2Prms::apply;
         }
-        ProxyMethod proxyMethod = args -> {//TODO
-            ResponseFuture<T> future = arg2Prms.apply(args);
-            future.whenSuccess(timeout);
-            return future.getEntity();
-        };
-        if (Optional.class.isAssignableFrom(returnType)) {
-            finalArg2Obj = args -> Optional.ofNullable(proxyMethod.apply(args));
-        } else {
-            finalArg2Obj = proxyMethod;
+
+        if (Future.class.isAssignableFrom(returnType)) {
+
+            return args -> {
+                ClientResponsePromise<T> promise = new ClientResponsePromise<>();
+
+                arg2Prms.apply(args).addListener(f -> {
+                    if (f.isDoneAndSuccess()) {
+                        promise.receive(f.getEntity());
+                    } else {
+                        try {
+                            FallBackInfo.setCause(f.getCause());
+                            FallBackInfo.setCauseType(f.getCauseType());
+
+                            promise.receive(((Future<T>) method.invoke(this.fallBackObject, args)).get());
+                        } catch (Exception e) {
+                            throw new UnexpectedException(e);
+
+                        } finally {
+                            FallBackInfo.reset();
+                        }
+                    }
+                });
+                return promise;
+            };
         }
-        return finalArg2Obj;
+
+        Function<Object, Object> function;
+        if (Optional.class.isAssignableFrom(returnType)) {
+            function = Optional::ofNullable;
+        } else {
+            function = object -> object;
+        }
+
+        return args -> {//TODO
+            ResponseFuture<T> future = arg2Prms.apply(args);
+            if (future.whenSuccess(timeout)) {
+                return function.apply(future.getEntity());
+            } else {
+                try {
+//                    future.getCause().printStackTrace();
+                    FallBackInfo.setCause(future.getCause());
+                    FallBackInfo.setCauseType(future.getCauseType());
+                    return method.invoke(this.fallBackObject, args);
+                } finally {
+                    FallBackInfo.reset();
+                }
+
+            }
+        };
     }
 
 

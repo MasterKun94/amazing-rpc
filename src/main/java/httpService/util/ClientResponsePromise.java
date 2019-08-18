@@ -20,6 +20,7 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
     private volatile boolean isSuccess;
     private volatile AtomicReference<Thread> thread = new AtomicReference<>();
     private final ConcurrentLinkedQueue<FutureListener<T>> listeners = new ConcurrentLinkedQueue<>();
+    private FallBackMethod fallBackMethod;
 
     private AtomicBoolean isDone = new AtomicBoolean(false);
 
@@ -32,7 +33,7 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
             } catch (Throwable throwable) {
                 this.receive(throwable, CauseType.DEFAULT);
             }
-        });
+        });//TODO
     }
 
     @Override
@@ -92,7 +93,6 @@ public class ClientResponsePromise<T> implements ResponsePromise<T> {
     @Override
     public boolean whenSuccess(long timeout) {
         this.thread.set(Thread.currentThread());
-
         if (!isDone()) {
             LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(timeout));
         }

@@ -121,24 +121,25 @@ public class ChannelHolderExec implements RpcExecutor, ReleaseAble {
 
         InetSocketAddress address = defaultArgs.getAddress();
         ChannelFuture future;
-        if (this.channel == null) {
+//        if (this.channel == null) {
             future = Client.start(address,
                     this,
                     sslContext,
                     showRequest,
                     showResponse,
                     charset);
-        } else {
-            future = channel.connect(address);
-        }
-        future.addListener(f -> {
-            if (future.isSuccess()) {
-                logger.debug("{}, [{}] reconnect success", address, future.channel());
-            } else {
-                promise.receive(future.cause(), CauseType.CONNECTION_CONNECT_FAILED);
-                logger.debug("{}, [{}] reconnect failed", address, future.channel());
-            }
-        }).syncUninterruptibly();
+//        } else {
+//            future = channel.connect(address);
+//        }
+        future.syncUninterruptibly()
+                .addListener(f -> {
+                    if (future.isSuccess()) {
+                        logger.info("{}, [{}] reconnect success", address, future.channel());
+                    } else {
+                        promise.receive(future.cause(), CauseType.CONNECTION_CONNECT_FAILED);
+                        logger.info("{}, [{}] reconnect failed", address, future.channel());
+                    }
+                });
 
         this.channel = future.channel();
         this.handler = channel.pipeline().get(ExecutionHandler.class);
